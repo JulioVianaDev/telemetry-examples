@@ -1,0 +1,12 @@
+{
+  "themes": {
+    "enabled": true
+  },
+  "dependencies": {
+    "dagMaxNumServices": 200,
+    "menuEnabled": true
+  },
+  "monitor": {
+    "menuEnabled": true
+  }
+}

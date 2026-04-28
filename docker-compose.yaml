@@ -1,0 +1,81 @@
+networks:
+  monitoring:
+
+volumes:
+  backend_data:
+  rabbitmq_data:
+
+services:
+  db:
+    image: postgres:15
+    container_name: telemetry_db
+    environment:
+      POSTGRES_USER: guest
+      POSTGRES_PASSWORD: guest
+      POSTGRES_DB: backend
+    ports:
+      - "5432:5432"
+    volumes:
+      - backend_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "guest" -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [monitoring]
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_telemetry
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks: [monitoring]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    container_name: jaeger_telemetry
+    environment:
+      - JAEGER_QUERY_UI_CONFIG_FILE=/etc/jaeger/config-ui.json
+    volumes:
+      - ./config-ui.json:/etc/jaeger/config-ui.json
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+      - "14250:14250"
+    networks: [monitoring]
+    restart: unless-stopped
+
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.53.0
+    container_name: otel_collector
+    command: ["--config=/conf/collector-config.yaml"]
+    volumes:
+      - ./collector-config.yaml:/conf/collector-config.yaml
+    ports:
+      - "9464:9464"
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+    networks: [monitoring]
+    restart: unless-stopped
