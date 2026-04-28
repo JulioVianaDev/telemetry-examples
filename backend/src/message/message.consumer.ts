@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { context, propagation, SpanKind, SpanStatusCode, Tracer } from '@opentelemetry/api';
+import { context, propagation, SpanKind, Tracer } from '@opentelemetry/api';
 import { BasicTracerProvider, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -12,34 +12,25 @@ import { RabbitmqService } from '../rabbitmq/rabbitmq.service';
 @Injectable()
 export class MessageConsumer implements OnModuleInit {
   private readonly tracer: Tracer;
-  private readonly dbTracer: Tracer;
 
   constructor(
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
     private readonly rabbitmqService: RabbitmqService,
   ) {
-    const exporterUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317';
-
     const consumerProvider = new BasicTracerProvider({
       resource: resourceFromAttributes({
         [ATTR_SERVICE_NAME]: 'consumer',
       }),
       spanProcessors: [
-        new SimpleSpanProcessor(new OTLPTraceExporter({ url: exporterUrl })),
+        new SimpleSpanProcessor(
+          new OTLPTraceExporter({
+            url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317',
+          }),
+        ),
       ],
     });
     this.tracer = consumerProvider.getTracer('message-consumer');
-
-    const dbProvider = new BasicTracerProvider({
-      resource: resourceFromAttributes({
-        [ATTR_SERVICE_NAME]: 'pg-query',
-      }),
-      spanProcessors: [
-        new SimpleSpanProcessor(new OTLPTraceExporter({ url: exporterUrl })),
-      ],
-    });
-    this.dbTracer = dbProvider.getTracer('pg-query');
   }
 
   async onModuleInit() {
@@ -59,29 +50,7 @@ export class MessageConsumer implements OnModuleInit {
                 span.setAttribute('messaging.message_id', data.id);
                 console.log(`[Consumer] processing message ${data.id}`);
 
-                await this.dbTracer.startActiveSpan(
-                  'UPDATE messages SET status = $1 WHERE id = $2',
-                  {
-                    kind: SpanKind.CLIENT,
-                    attributes: {
-                      'db.system': 'postgresql',
-                      'db.name': process.env.DB_NAME || 'backend',
-                      'db.operation': 'UPDATE',
-                      'db.sql.table': 'messages',
-                      'db.statement': 'UPDATE messages SET status = $1 WHERE id = $2',
-                    },
-                  },
-                  async (dbSpan) => {
-                    try {
-                      await this.messageRepo.update(data.id, { status: 'processed' });
-                    } catch (err) {
-                      dbSpan.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
-                      throw err;
-                    } finally {
-                      dbSpan.end();
-                    }
-                  },
-                );
+                await this.messageRepo.update(data.id, { status: 'processed' });
 
                 console.log(`[Consumer] message ${data.id} processed`);
               } catch (err) {
