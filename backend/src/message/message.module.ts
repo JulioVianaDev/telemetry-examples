@@ -5,10 +5,11 @@ import { MessageController } from './message.controller';
 import { MessageService } from './message.service';
 import { MessageConsumer } from './message.consumer';
 import { ConsoleService } from './console.service';
+import { DelayService } from './delay.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Message])],
   controllers: [MessageController],
-  providers: [MessageService, MessageConsumer, ConsoleService],
+  providers: [MessageService, MessageConsumer, ConsoleService, DelayService],
 })
 export class MessageModule { }
