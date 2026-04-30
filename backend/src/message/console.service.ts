@@ -1,16 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Traceable } from "../traceable.decorator";
 import { DelayService } from "./delay.service";
 
 @Traceable()
 @Injectable()
 export class ConsoleService {
-    constructor(private readonly delayService: DelayService
+    private readonly logger: Logger = new Logger(ConsoleService.name)
+    constructor(private readonly delayService: DelayService,
     ) {
     }
 
     async log(message: string) {
         await this.delayService.randomDelay();
-        console.log(message);
+        this.logger.log(message);
     }
 }

@@ -4,6 +4,10 @@ networks:
 volumes:
   backend_data:
   rabbitmq_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
 
 services:
   db:
@@ -46,36 +50,95 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  jaeger:
-    image: jaegertracing/jaeger:latest
-    container_name: jaeger_telemetry
-    environment:
-      - JAEGER_QUERY_UI_CONFIG_FILE=/etc/jaeger/config-ui.json
+  # ─────────────────────────────────────────
+  # Grafana Tempo (Traces - replaces Jaeger)
+  # ─────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/config.yaml"]
     volumes:
-      - ./config-ui.json:/etc/jaeger/config-ui.json
+      - ./config/tempo.yaml:/etc/tempo/config.yaml
+      - tempo_data:/var/tempo
     ports:
-      - "5775:5775/udp"
-      - "6831:6831/udp"
-      - "6832:6832/udp"
-      - "5778:5778"
-      - "16686:16686"
-      - "14268:14268"
-      - "9411:9411"
-      - "14250:14250"
+      - "3200:3200"
+      - "9095:9095"
     networks: [monitoring]
     restart: unless-stopped
 
-  collector:
-    image: otel/opentelemetry-collector-contrib:0.53.0
-    container_name: otel_collector
-    command: ["--config=/conf/collector-config.yaml"]
+  # ─────────────────────────────────────────
+  # Grafana Loki (Logs)
+  # ─────────────────────────────────────────
+  loki:
+    image: grafana/loki:2.9.5
+    container_name: loki
+    command: ["-config.file=/etc/loki/config.yaml"]
     volumes:
-      - ./collector-config.yaml:/conf/collector-config.yaml
+      - ./config/loki.yaml:/etc/loki/config.yaml
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks: [monitoring]
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # Prometheus (Metrics)
+  # ─────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=exemplar-storage"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [monitoring]
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # OpenTelemetry Collector
+  # ─────────────────────────────────────────
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.97.0
+    container_name: otel_collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otel/config.yaml
     ports:
       - "9464:9464"
       - "4317:4317"
       - "4318:4318"
+      - "8888:8888"
     depends_on:
-      - jaeger
+      - tempo
+      - loki
+      - prometheus
     networks: [monitoring]
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # Grafana (UI - Dashboards)
+  # ─────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "5555:3000"
+    networks: [monitoring]
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
     restart: unless-stopped
