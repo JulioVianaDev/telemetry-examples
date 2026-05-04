@@ -23,7 +23,7 @@ datasources:
         filterByTraceID: true
         filterBySpanID: false
         customQuery: true
-        query: '{service_name="${__span.tags["service.name"]}"} |= "${__trace.traceId}"'
+        query: '{job="${__span.tags["service.name"]}"} |= "${__trace.traceId}"'
       tracesToMetrics:
         datasourceUid: prometheus
         queries:

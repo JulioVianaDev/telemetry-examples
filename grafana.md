@@ -19,56 +19,64 @@ The **Explore** page (compass icon in the left sidebar) is where you test querie
 Datasource: **Loki**
 Query language: **LogQL**
 
+> **Available labels:** In this setup, Loki receives `job` and `level` as indexed labels (configured in the OTEL Collector's Loki exporter). Use `job` to select logs, not `service_name`.
+
 ### Basic queries
 
 ```logql
+# All logs (show everything)
+{job=~".+"}
+
 # All logs from the backend
-{service_name="backend-nestjs"}
+{job="backend-nestjs"}
 
 # Filter logs containing a keyword
-{service_name="backend-nestjs"} |= "error"
+{job="backend-nestjs"} |= "error"
 
 # Exclude a keyword
-{service_name="backend-nestjs"} != "health"
+{job="backend-nestjs"} != "health"
 
 # Case-insensitive regex match
-{service_name="backend-nestjs"} |~ "(?i)timeout|reset"
+{job="backend-nestjs"} |~ "(?i)timeout|reset"
+
+# Filter by level label
+{job="backend-nestjs", level="error"}
 ```
 
 ### Parsing and filtering fields
 
 ```logql
 # Parse JSON logs and filter by a field
-{service_name="backend-nestjs"} | json | level="error"
+{job="backend-nestjs"} | json | level="error"
 
 # Parse and keep only specific fields
-{service_name="backend-nestjs"} | json | line_format "{{.message}}"
+{job="backend-nestjs"} | json | line_format "{{.message}}"
 
 # Filter by HTTP status code (if present in log)
-{service_name="backend-nestjs"} | json | status >= 400
+{job="backend-nestjs"} | json | status >= 400
 ```
 
 ### Aggregations (metric queries from logs)
 
 ```logql
 # Log volume over time (useful for "Logs" panel in dashboards)
-rate({service_name="backend-nestjs"}[5m])
+rate({job="backend-nestjs"}[5m])
 
 # Count errors per minute
-rate({service_name="backend-nestjs"} |= "error"[1m])
+rate({job="backend-nestjs"} |= "error"[1m])
 
 # Top log producers by level
-sum by (level) (rate({service_name="backend-nestjs"} | json[5m]))
+sum by (level) (rate({job="backend-nestjs"}[5m]))
 ```
 
 ### Dashboard panel tips
 
 | Panel type   | Use case                        | Query example                                                    |
 |--------------|---------------------------------|------------------------------------------------------------------|
-| Logs         | Raw log lines                   | `{service_name="backend-nestjs"}`                                |
-| Time series  | Log volume / error rate         | `rate({service_name="backend-nestjs"} \|= "error"[5m])`         |
-| Stat         | Total errors in last hour       | `count_over_time({service_name="backend-nestjs"} \|= "error"[1h])` |
-| Bar gauge    | Errors by level                 | `sum by (level) (count_over_time({service_name="backend-nestjs"} \| json[1h]))` |
+| Logs         | Raw log lines                   | `{job="backend-nestjs"}`                                         |
+| Time series  | Log volume / error rate         | `rate({job="backend-nestjs"} \|= "error"[5m])`                  |
+| Stat         | Total errors in last hour       | `count_over_time({job="backend-nestjs"} \|= "error"[1h])`       |
+| Bar gauge    | Errors by level                 | `sum by (level) (count_over_time({job="backend-nestjs", level="error"}[1h]))` |
 
 ---
 
@@ -170,7 +178,21 @@ Datasource: **Tempo**
 
 ---
 
-## 5. Correlating signals (jumping between logs, traces, metrics)
+## 5. Where to find all data at a glance
+
+Grafana **Explore** does not show data automatically — you must run a query. Here are the quickest queries to see everything:
+
+| Datasource   | Quick query to see all data                     |
+|--------------|-------------------------------------------------|
+| **Loki**     | `{job=~".+"}` (all logs)                        |
+| **Prometheus** | Click **Metrics browser** or run `{__name__=~".+"}` |
+| **Tempo**    | Go to **Search** tab, leave filters empty, click **Run query** |
+
+> **Tip:** To browse available labels in Loki, click the **Label browser** button in Explore. You'll see `job` and `level` as available labels.
+
+---
+
+## 6. Correlating signals (jumping between logs, traces, metrics)
 
 The datasources are already linked via provisioning. These correlations work automatically:
 
@@ -188,7 +210,7 @@ The datasources are already linked via provisioning. These correlations work aut
 
 ---
 
-## 6. Building a dashboard (step by step)
+## 7. Building a dashboard (step by step)
 
 1. Click **+** (top-right) -> **New dashboard**
 2. Click **Add visualization**
@@ -227,23 +249,31 @@ The datasources are already linked via provisioning. These correlations work aut
 
 ---
 
-## 7. Variables (dynamic dropdowns)
+## 8. Variables (dynamic dropdowns)
 
 Add variables to make dashboards interactive:
 
 1. Dashboard settings (gear icon) -> **Variables** -> **New variable**
-2. Example: create a `service` variable
+2. Example: create a `job` variable for Loki
+   - **Type**: Query
+   - **Datasource**: Loki
+   - **Query**: `label_values(job)`
+3. Use `$job` in your Loki queries:
+   ```logql
+   {job="$job"}
+   ```
+4. Example: create a `service` variable for Prometheus
    - **Type**: Query
    - **Datasource**: Prometheus
    - **Query**: `label_values(http_server_request_duration_seconds_count, service_name)`
-3. Use `$service` in your queries:
+5. Use `$service` in your Prometheus queries:
    ```promql
    rate(http_server_request_duration_seconds_count{service_name="$service"}[5m])
    ```
 
 ---
 
-## 8. Useful keyboard shortcuts in Grafana
+## 9. Useful keyboard shortcuts in Grafana
 
 | Shortcut    | Action                |
 |-------------|-----------------------|
