@@ -7,6 +7,7 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
   private channel: amqp.Channel | null = null;
 
   static readonly QUEUE = 'messages';
+  static readonly UPDATES_QUEUE = 'message-updates';
 
   private get url(): string {
     const host = process.env.RABBITMQ_HOST || 'localhost';
@@ -22,6 +23,7 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
         this.connection = await amqp.connect(this.url);
         this.channel = await this.connection.createChannel();
         await this.channel!.assertQueue(RabbitmqService.QUEUE, { durable: true });
+        await this.channel!.assertQueue(RabbitmqService.UPDATES_QUEUE, { durable: true });
         console.log(`[RabbitMQ] connected`);
         return;
       } catch (err) {

@@ -34,6 +34,7 @@ export class MessageConsumer implements OnModuleInit {
   }
 
   async onModuleInit() {
+    // consume create messages
     await this.rabbitmqService.consume(
       RabbitmqService.QUEUE,
       async (msg) => {
@@ -48,6 +49,7 @@ export class MessageConsumer implements OnModuleInit {
               try {
                 const data = JSON.parse(msg.content.toString());
                 span.setAttribute('messaging.message_id', data.id);
+                span.setAttribute('messaging.operation', 'create');
                 console.log(`[Consumer] processing message ${data.id}`);
 
                 await this.messageRepo.update(data.id, { status: 'processed' });
@@ -65,5 +67,43 @@ export class MessageConsumer implements OnModuleInit {
       },
     );
     console.log('[Consumer] listening on queue "messages"');
+
+    // consume update messages
+    await this.rabbitmqService.consume(
+      RabbitmqService.UPDATES_QUEUE,
+      async (msg) => {
+        const headers = (msg.properties.headers ?? {}) as Record<string, string>;
+        const parentContext = propagation.extract(context.active(), headers);
+
+        await context.with(parentContext, async () => {
+          await this.tracer.startActiveSpan(
+            'message-update process',
+            { kind: SpanKind.CONSUMER },
+            async (span) => {
+              try {
+                const data = JSON.parse(msg.content.toString());
+                span.setAttribute('messaging.message_id', data.id);
+                span.setAttribute('messaging.operation', 'update');
+                span.setAttribute('messaging.content', data.content);
+                console.log(`[Consumer] processing update for message ${data.id}`);
+
+                await this.messageRepo.update(data.id, {
+                  status: 'processed',
+                  content: data.content,
+                });
+
+                console.log(`[Consumer] message ${data.id} update processed`);
+              } catch (err) {
+                span.recordException(err as Error);
+                throw err;
+              } finally {
+                span.end();
+              }
+            },
+          );
+        });
+      },
+    );
+    console.log('[Consumer] listening on queue "message-updates"');
   }
 }

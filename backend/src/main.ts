@@ -3,11 +3,13 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { OtelLoggerService } from './otel-logger.service';
 import { TracingValidationPipe } from './tracing-validation.pipe';
+import { TracingExceptionFilter } from './tracing-exception.filter';
 
 async function bootstrap() {
   const otelLogger = new OtelLoggerService();
   const app = await NestFactory.create(AppModule, { logger: otelLogger });
   app.enableCors();
+  app.useGlobalFilters(new TracingExceptionFilter());
   app.useGlobalPipes(new TracingValidationPipe());
   const port = process.env.PORT ?? 3333;
   await app.listen(port);

@@ -17,22 +17,13 @@
         "label": "Endpoint",
         "type": "query",
         "datasource": { "uid": "prometheus" },
-        "query": "label_values(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}, span_name)",
+        "query": "label_values(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}, http_route)",
         "refresh": 2,
         "includeAll": true,
         "allValue": ".*",
         "current": { "text": "All", "value": "$__all" },
         "multi": false,
         "sort": 1
-      },
-      {
-        "name": "status_filter",
-        "label": "Status Code",
-        "type": "custom",
-        "query": "All : .*,2xx : 2..,4xx : 4..,5xx : 5..",
-        "current": { "text": "All", "value": ".*" },
-        "includeAll": false,
-        "multi": false
       }
     ]
   },
@@ -54,56 +45,56 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[$__range])) by (span_name)",
+          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "total_requests",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "sum(rate(traces_spanmetrics_latency_sum{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[5m])) by (span_name) / sum(rate(traces_spanmetrics_latency_count{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[5m])) by (span_name) * 1000",
+          "expr": "label_join(sum(increase(http_server_duration_milliseconds_sum{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route) / clamp_min(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route), 1), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "avg_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[5m])) by (le, span_name)) * 1000",
+          "expr": "label_join(histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p95_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[5m])) by (le, span_name)) * 1000",
+          "expr": "label_join(histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p99_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "sum(rate(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\"}[5m])) by (span_name)",
+          "expr": "label_join(sum(rate(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}[5m])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "req_rate",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"2..\"}[$__range])) by (http_method, http_route)",
+          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"2..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_2xx",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"4..\"}[$__range])) by (http_method, http_route)",
+          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"4..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_4xx",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"5..\"}[$__range])) by (http_method, http_route)",
+          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"5..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_5xx",
           "instant": true,
@@ -158,6 +149,7 @@
       ],
       "fieldConfig": {
         "defaults": {
+          "noValue": "0",
           "custom": {
             "align": "center",
             "cellOptions": { "type": "auto" },
@@ -171,12 +163,13 @@
             "properties": [
               { "id": "custom.align", "value": "left" },
               { "id": "custom.width", "value": 220 },
+              { "id": "noValue", "value": "-" },
               {
                 "id": "links",
                 "value": [
                   {
                     "title": "Drill down into ${__value.text}",
-                    "url": "/d/requests-dashboard/requests-dashboard?var-endpoint=${__value.text}&${__url_time_range}",
+                    "url": "/d/requests-dashboard/requests-dashboard?var-endpoint=${__data.fields.http_route}&${__url_time_range}",
                     "targetBlank": false
                   }
                 ]
@@ -216,6 +209,7 @@
               { "id": "unit", "value": "ms" },
               { "id": "decimals", "value": 2 },
               { "id": "custom.width", "value": 140 },
+              { "id": "noValue", "value": "-" },
               {
                 "id": "custom.cellOptions",
                 "value": {
@@ -248,6 +242,7 @@
               { "id": "unit", "value": "ms" },
               { "id": "decimals", "value": 2 },
               { "id": "custom.width", "value": 140 },
+              { "id": "noValue", "value": "-" },
               {
                 "id": "custom.cellOptions",
                 "value": {
@@ -279,7 +274,8 @@
             "properties": [
               { "id": "unit", "value": "ms" },
               { "id": "decimals", "value": 2 },
-              { "id": "custom.width", "value": 140 }
+              { "id": "custom.width", "value": 140 },
+              { "id": "noValue", "value": "-" }
             ]
           },
           {
@@ -393,7 +389,7 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\", span_name=~\"$endpoint\"}[1m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[1m]))",
           "legendFormat": "req/s",
           "refId": "A"
         }
@@ -419,17 +415,17 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\", span_name=~\"$endpoint\"}[5m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\", span_name=~\"$endpoint\"}[5m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{span_kind=\"SPAN_KIND_SERVER\", service=\"backend-nestjs\", span_name=~\"$endpoint\"}[5m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -454,36 +450,24 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"2..\"}[$__range])) by (http_status_code)",
+          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[$__range])) by (http_status_code)",
           "legendFormat": "{{http_status_code}}",
           "refId": "A",
-          "instant": true
-        },
-        {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"4..\"}[$__range])) by (http_status_code)",
-          "legendFormat": "{{http_status_code}}",
-          "refId": "B",
-          "instant": true
-        },
-        {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_status_code=~\"5..\"}[$__range])) by (http_status_code)",
-          "legendFormat": "{{http_status_code}}",
-          "refId": "C",
           "instant": true
         }
       ],
       "fieldConfig": {
         "overrides": [
           {
-            "matcher": { "id": "byRegexp", "options": "2.." },
+            "matcher": { "id": "byRegexp", "options": "^2" },
             "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
           },
           {
-            "matcher": { "id": "byRegexp", "options": "4.." },
+            "matcher": { "id": "byRegexp", "options": "^4" },
             "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }]
           },
           {
-            "matcher": { "id": "byRegexp", "options": "5.." },
+            "matcher": { "id": "byRegexp", "options": "^5" },
             "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
           }
         ]
@@ -497,7 +481,7 @@
     },
     {
       "id": 102,
-      "title": "Individual Requests - $endpoint (filter: $status_filter)",
+      "title": "Individual Requests - $endpoint",
       "type": "row",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
       "collapsed": false,
@@ -505,7 +489,7 @@
     },
     {
       "id": 5,
-      "title": "All Requests for: $endpoint  |  Status filter: $status_filter  |  Click a Trace ID to inspect",
+      "title": "All Requests for: $endpoint  |  Click a Trace ID to inspect",
       "description": "Individual traced requests. Click any Trace ID to open the full trace waterfall. Use column headers to sort by duration.",
       "type": "table",
       "gridPos": { "h": 14, "w": 24, "x": 0, "y": 20 },
@@ -513,7 +497,7 @@
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && name =~ \"$endpoint\" && span.http.status_code >= 100}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"$endpoint\"}",
           "limit": 50,
           "tableType": "traces",
           "refId": "A"
@@ -523,7 +507,7 @@
         "showHeader": true,
         "cellHeight": "sm",
         "sortBy": [
-          { "displayName": "Duration", "desc": true }
+          { "displayName": "Start time", "desc": true }
         ]
       },
       "fieldConfig": {
@@ -611,7 +595,7 @@
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && name =~ \"$endpoint\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"$endpoint\"}",
           "limit": 1,
           "refId": "A"
         }

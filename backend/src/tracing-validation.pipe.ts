@@ -9,6 +9,8 @@ export class TracingValidationPipe extends ValidationPipe {
   constructor() {
     super({
       transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
       exceptionFactory: (errors: ValidationError[]) => {
         const tracer = trace.getTracer('dto-validation');
         const activeSpan = trace.getActiveSpan();

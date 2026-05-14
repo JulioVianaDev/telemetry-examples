@@ -91,16 +91,21 @@
     },
     {
       "id": 3,
-      "title": "Error Rate (%)",
-      "description": "Percentage of 5xx responses",
+      "title": "Error & Blocked Rate (%)",
+      "description": "Percentage of 4xx and 5xx responses",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{job=~\"$job\"}[5m])) * 100",
-          "legendFormat": "Error %",
+          "expr": "sum(rate(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"4..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{job=~\"$job\"}[5m])) * 100 or vector(0)",
+          "legendFormat": "4xx %",
           "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"5..\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{job=~\"$job\"}[5m])) * 100 or vector(0)",
+          "legendFormat": "5xx %",
+          "refId": "B"
         }
       ],
       "fieldConfig": {
@@ -111,7 +116,7 @@
             "lineWidth": 2,
             "fillOpacity": 30
           },
-          "color": { "fixedColor": "red", "mode": "fixed" },
+          "color": { "mode": "palette-classic" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -127,7 +132,7 @@
       "id": 4,
       "title": "Total Requests",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 8 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -157,11 +162,11 @@
       "id": 5,
       "title": "Avg Latency",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 8 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(http_server_duration_milliseconds_sum{job=~\"$job\"}[5m])) / sum(rate(http_server_duration_milliseconds_count{job=~\"$job\"}[5m]))",
+          "expr": "sum(rate(http_server_duration_milliseconds_sum{job=~\"$job\"}[$__rate_interval])) / sum(rate(http_server_duration_milliseconds_count{job=~\"$job\"}[$__rate_interval]))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -186,10 +191,41 @@
       }
     },
     {
+      "id": 18,
+      "title": "Blocked Requests (4xx)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 8 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"4..\"}[5m])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
       "id": 6,
       "title": "Error Count (5xx)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 8 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -220,7 +256,7 @@
       "id": 7,
       "title": "Span Calls (from Tempo)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 8 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
