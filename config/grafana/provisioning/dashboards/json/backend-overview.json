@@ -416,7 +416,7 @@
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \".+\"}",
           "limit": 20,
           "tableType": "traces",
           "refId": "A"
@@ -424,30 +424,61 @@
       ],
       "options": {
         "showHeader": true,
-        "cellHeight": "sm"
+        "cellHeight": "sm",
+        "sortBy": [
+          { "displayName": "Start time", "desc": true }
+        ]
       },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "auto",
             "cellOptions": { "type": "auto" },
-            "inspect": false
+            "inspect": false,
+            "filterable": true
           }
         },
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "traceID" },
             "properties": [
+              { "id": "custom.width", "value": 320 },
               {
                 "id": "links",
                 "value": [
                   {
-                    "title": "View Trace",
+                    "title": "View Trace ${__value.text}",
                     "url": "/explore?left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22queryType%22:%22traceql%22,%22query%22:%22${__value.raw}%22%7D%5D%7D",
                     "targetBlank": true
                   }
                 ]
               }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "traceDuration" },
+            "properties": [
+              { "id": "unit", "value": "ms" },
+              { "id": "custom.width", "value": 140 },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "rootTraceName" },
+            "properties": [
+              { "id": "custom.width", "value": 220 }
             ]
           }
         ]

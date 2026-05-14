@@ -579,7 +579,7 @@
     },
     {
       "id": 103,
-      "title": "Trace Detail",
+      "title": "Logs",
       "type": "row",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
       "collapsed": false,
@@ -587,19 +587,28 @@
     },
     {
       "id": 6,
-      "title": "Trace Waterfall - $endpoint",
-      "description": "Select a trace from the table above to see the detailed waterfall here. Use Explore for full trace inspection.",
-      "type": "traces",
+      "title": "Application Logs - $endpoint",
+      "description": "Logs from the backend service. Click a TraceID link to open the full trace waterfall in Explore.",
+      "type": "logs",
       "gridPos": { "h": 12, "w": 24, "x": 0, "y": 35 },
-      "datasource": { "uid": "tempo" },
+      "datasource": { "uid": "loki" },
       "targets": [
         {
-          "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"$endpoint\"}",
-          "limit": 1,
+          "expr": "{job=\"backend-nestjs\"} | json",
+          "legendFormat": "",
           "refId": "A"
         }
-      ]
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
     }
   ],
   "schemaVersion": 39
