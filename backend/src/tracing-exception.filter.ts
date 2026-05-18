@@ -6,10 +6,14 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { context, trace, SpanStatusCode } from '@opentelemetry/api';
+import { logs, SeverityNumber } from '@opentelemetry/api-logs';
+import { httpContextStorage } from './http-context.interceptor';
 
 @Catch()
 export class TracingExceptionFilter implements ExceptionFilter {
+  private readonly otelLogger = logs.getLogger('nestjs');
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -24,18 +28,21 @@ export class TracingExceptionFilter implements ExceptionFilter {
       ? exception.getResponse()
       : 'Internal server error';
 
+    const errorType = isHttpException
+      ? exception.name
+      : (exception as Error)?.constructor?.name || 'UnknownError';
+    const errorMessage = typeof exceptionResponse === 'string'
+      ? exceptionResponse
+      : JSON.stringify(exceptionResponse);
+
     const activeSpan = trace.getActiveSpan();
     if (activeSpan) {
       activeSpan.setAttributes({
         'http.status_code': status,
         'http.method': request.method,
         'http.route': request.route?.path || request.url,
-        'error.type': isHttpException
-          ? exception.name
-          : (exception as Error)?.constructor?.name || 'UnknownError',
-        'error.message': typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : JSON.stringify(exceptionResponse),
+        'error.type': errorType,
+        'error.message': errorMessage,
       });
 
       if (exception instanceof Error) {
@@ -50,6 +57,35 @@ export class TracingExceptionFilter implements ExceptionFilter {
       activeSpan.setStatus({
         code: SpanStatusCode.ERROR,
         message: `HTTP ${status}`,
+      });
+    }
+
+    // Log real errors (not DTO/validation 400s) directly to OTel so they appear in Loki
+    if (status >= 500 || (!isHttpException && status >= 400)) {
+      const route = request.route?.path
+        ? request.baseUrl + request.route.path
+        : request.url;
+      const activeContext = context.active();
+      const spanContext = trace.getSpanContext(activeContext);
+      const httpCtx = httpContextStorage.getStore();
+      const message = exception instanceof Error
+        ? exception.message
+        : String(exception);
+
+      this.otelLogger.emit({
+        context: activeContext,
+        severityNumber: SeverityNumber.ERROR,
+        severityText: 'ERROR',
+        body: `${errorType}: ${message}`,
+        attributes: {
+          'nestjs.context': 'ExceptionFilter',
+          'error.type': errorType,
+          'error.status': status,
+          ...(spanContext?.traceId ? { traceId: spanContext.traceId } : {}),
+          ...(spanContext?.spanId ? { spanId: spanContext.spanId } : {}),
+          http_method: httpCtx?.method ?? request.method,
+          http_route: httpCtx?.route ?? route,
+        },
       });
     }
 
