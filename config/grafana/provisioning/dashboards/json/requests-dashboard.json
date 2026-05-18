@@ -59,14 +59,14 @@
           "format": "table"
         },
         {
-          "expr": "label_join(histogram_quantile(0.95, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(histogram_quantile(0.95, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)) >= 0, \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p95_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(histogram_quantile(0.99, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(histogram_quantile(0.99, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)) >= 0, \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p99_latency",
           "instant": true,
@@ -421,17 +421,17 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le)) >= 0",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le)) >= 0",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\"$endpoint\"}[5m])) by (le)) >= 0",
           "legendFormat": "p99",
           "refId": "C"
         }

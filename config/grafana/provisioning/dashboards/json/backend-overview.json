@@ -62,17 +62,17 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le)) >= 0",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le)) >= 0",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=~\"$job\"}[5m])) by (le)) >= 0",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -384,12 +384,12 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name))",
+          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name)) >= 0",
           "legendFormat": "p50 {{span_name}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name))",
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name)) >= 0",
           "legendFormat": "p95 {{span_name}}",
           "refId": "B"
         }
@@ -518,12 +518,12 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"pg-query\", span_kind=\"SPAN_KIND_CLIENT\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"pg-query\", span_kind=\"SPAN_KIND_CLIENT\"}[5m])) by (le)) >= 0",
           "legendFormat": "p95 DB latency",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"pg-query\", span_kind=\"SPAN_KIND_CLIENT\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"pg-query\", span_kind=\"SPAN_KIND_CLIENT\"}[5m])) by (le)) >= 0",
           "legendFormat": "p50 DB latency",
           "refId": "B"
         }
