@@ -1,5 +1,7 @@
 import { ConsoleLogger } from '@nestjs/common';
+import { context, trace } from '@opentelemetry/api';
 import { logs, SeverityNumber } from '@opentelemetry/api-logs';
+import { httpContextStorage } from './http-context.interceptor';
 
 export class OtelLoggerService extends ConsoleLogger {
   private readonly otelLogger = logs.getLogger('nestjs');
@@ -42,14 +44,22 @@ export class OtelLoggerService extends ConsoleLogger {
     optionalParams: any[],
     stack?: string,
   ) {
-    const context = this.extractContext(optionalParams);
+    const ctx = this.extractContext(optionalParams);
+    const activeContext = context.active();
+    const spanContext = trace.getSpanContext(activeContext);
+    const httpCtx = httpContextStorage.getStore();
     this.otelLogger.emit({
+      context: activeContext,
       severityNumber: severity,
       severityText: SeverityNumber[severity],
       body: typeof message === 'string' ? message : JSON.stringify(message),
       attributes: {
-        ...(context ? { 'nestjs.context': context } : {}),
+        ...(ctx ? { 'nestjs.context': ctx } : {}),
         ...(stack ? { 'exception.stacktrace': stack } : {}),
+        ...(spanContext?.traceId ? { traceId: spanContext.traceId } : {}),
+        ...(spanContext?.spanId ? { spanId: spanContext.spanId } : {}),
+        ...(httpCtx?.method ? { http_method: httpCtx.method } : {}),
+        ...(httpCtx?.route ? { http_route: httpCtx.route } : {}),
       },
     });
   }

@@ -37,6 +37,13 @@
         "current": { "text": "All", "value": "$__all" },
         "multi": false,
         "sort": 1
+      },
+      {
+        "name": "traceId",
+        "label": "Trace ID",
+        "type": "textbox",
+        "current": { "text": "", "value": "" },
+        "description": "Filter logs by Trace ID. Click a Trace ID in the table below to auto-fill."
       }
     ]
   },
@@ -556,6 +563,11 @@
                     "title": "Open Trace ${__value.text}",
                     "url": "/explore?left={\"datasource\":\"tempo\",\"queries\":[{\"queryType\":\"traceql\",\"query\":\"${__value.raw}\"}]}",
                     "targetBlank": true
+                  },
+                  {
+                    "title": "Filter logs by this Trace ID",
+                    "url": "/d/requests-dashboard/requests-dashboard?var-method=${method}&var-endpoint=${endpoint}&var-traceId=${__value.raw}&${__url_time_range}",
+                    "targetBlank": false
                   }
                 ]
               }
@@ -619,7 +631,7 @@
       "datasource": { "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"backend-nestjs\"} | json",
+          "expr": "{job=\"backend-nestjs\"} | json | attributes_http_method =~ `$method` | attributes_http_route =~ `$endpoint`",
           "legendFormat": "",
           "refId": "A"
         }
