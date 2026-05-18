@@ -190,4 +190,58 @@ echo ""
 curl -s "$BASE_URL/messages?limit=100"
 echo ""
 echo ""
+
+# --- Expected Counts Summary ---
+HALF=$((NUM / 2))
+GET_SINGLE=$(( NUM >= 5 ? 5 : NUM ))
+DEL_COUNT=$(( NUM >= 5 ? 5 : NUM ))
+
+# 4xx counts per endpoint:
+#   POST /messages:       3  (empty content, missing field, extra field)
+#   GET /messages:        2  (limit=-1, limit=999)
+#   GET /messages/:id:    2  (invalid UUID 400 + not found 404)
+#   PUT /messages/:id:    3  (not found 404 + empty content 400 + invalid UUID 400)
+#   DELETE /messages/:id: 2  (not found 404 + invalid UUID 400)
+
+POST_4XX=3
+GET_LIST_4XX=2
+GET_ONE_4XX=2
+PUT_4XX=3
+DEL_4XX=2
+ERR_5XX=7
+
+echo "========================================="
+echo "  EXPECTED COUNTS (compare with Grafana)"
+echo "========================================="
+echo ""
+echo "  Endpoint                      | Total | 2xx | 4xx | 5xx"
+echo "  ----------------------------------------------------------"
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "GET /"                    1                              1              0       0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "POST /messages"           $((NUM + POST_4XX))            $NUM           $POST_4XX 0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "GET /messages"            $((8 + GET_LIST_4XX))          8              $GET_LIST_4XX 0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "GET /messages/:id"        $((GET_SINGLE + GET_ONE_4XX))  $GET_SINGLE    $GET_ONE_4XX 0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "PUT /messages/:id"        $((HALF + PUT_4XX))            $HALF          $PUT_4XX 0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "DELETE /messages/:id"     $((DEL_COUNT + DEL_4XX))       $DEL_COUNT     $DEL_4XX 0
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "GET /messages/test/error" $ERR_5XX                       0              0       $ERR_5XX
+echo "  ----------------------------------------------------------"
+
+TOTAL_2XX=$((1 + NUM + 8 + GET_SINGLE + HALF + DEL_COUNT))
+TOTAL_4XX=$((POST_4XX + GET_LIST_4XX + GET_ONE_4XX + PUT_4XX + DEL_4XX))
+TOTAL_5XX=$ERR_5XX
+TOTAL=$((TOTAL_2XX + TOTAL_4XX + TOTAL_5XX))
+
+printf "  %-30s | %5d | %3d | %3d | %3d\n" "TOTALS" $TOTAL $TOTAL_2XX $TOTAL_4XX $TOTAL_5XX
+echo ""
+echo "  Detail of 4xx errors:"
+echo "    POST /messages:        3  (empty content, missing field, extra field)"
+echo "    GET /messages:         2  (limit=-1, limit=999)"
+echo "    GET /messages/:id:     2  (invalid UUID 400 + not found 404)"
+echo "    PUT /messages/:id:     3  (not found 404 + empty content 400 + invalid UUID 400)"
+echo "    DELETE /messages/:id:  2  (not found 404 + invalid UUID 400)"
+echo ""
+echo "  Detail of 5xx errors:"
+echo "    GET /messages/test/error: 7  (default, null, undefined, timeout, db, oom, type)"
+echo ""
+echo "  Note: 2xx includes 200 and 201 (POST create returns 201)"
+echo ""
 echo "Done! Check your Grafana dashboard at http://localhost:5555"

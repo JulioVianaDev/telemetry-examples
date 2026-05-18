@@ -45,28 +45,28 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(sum(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "total_requests",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(sum(increase(http_server_duration_milliseconds_sum{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route) / clamp_min(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (http_method, http_route), 1), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(sum(http_server_duration_milliseconds_sum{job=\"backend-nestjs\", http_route=~\".+\"}) by (http_method, http_route) / clamp_min(sum(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\"}) by (http_method, http_route), 1), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "avg_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(histogram_quantile(0.95, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(histogram_quantile(0.95, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p95_latency",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(histogram_quantile(0.99, sum(rate(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}[$__range])) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(histogram_quantile(0.99, sum(http_server_duration_milliseconds_bucket{job=\"backend-nestjs\", http_route=~\".+\"}) by (le, http_method, http_route)), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "p99_latency",
           "instant": true,
@@ -80,21 +80,21 @@
           "format": "table"
         },
         {
-          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"2..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(sum(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"2..\"}) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_2xx",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"4..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(sum(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"4..\"}) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_4xx",
           "instant": true,
           "format": "table"
         },
         {
-          "expr": "label_join(sum(increase(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"5..\"}[$__range])) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
+          "expr": "label_join(sum(http_server_duration_milliseconds_count{job=\"backend-nestjs\", http_route=~\".+\", http_status_code=~\"5..\"}) by (http_method, http_route), \"span_name\", \" \", \"http_method\", \"http_route\")",
           "legendFormat": "",
           "refId": "count_5xx",
           "instant": true,
@@ -119,8 +119,7 @@
               "Time 6": true,
               "Time 7": true,
               "Time 8": true,
-              "http_method": true,
-              "http_route": true
+              "http_method": true
             },
             "renameByName": {
               "span_name": "Endpoint",
@@ -142,7 +141,8 @@
               "Value #p99_latency": 5,
               "Value #count_2xx": 6,
               "Value #count_4xx": 7,
-              "Value #count_5xx": 8
+              "Value #count_5xx": 8,
+              "http_route": 9
             }
           }
         }
@@ -158,6 +158,12 @@
           }
         },
         "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "http_route" },
+            "properties": [
+              { "id": "custom.hidden", "value": true }
+            ]
+          },
           {
             "matcher": { "id": "byName", "options": "Endpoint" },
             "properties": [

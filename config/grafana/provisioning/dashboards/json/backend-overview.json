@@ -198,7 +198,7 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"4..\"}[5m])) or vector(0)",
+          "expr": "sum(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"4..\"}) or vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -229,7 +229,7 @@
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(increase(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"5..\"}[5m])) or vector(0)",
+          "expr": "sum(http_server_duration_milliseconds_count{job=~\"$job\", http_status_code=~\"5..\"}) or vector(0)",
           "legendFormat": "",
           "refId": "A"
         }
