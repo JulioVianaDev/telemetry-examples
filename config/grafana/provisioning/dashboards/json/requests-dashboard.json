@@ -522,7 +522,7 @@
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"$endpoint\" && span.http.method =~ \"$method\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"^$endpoint$$\" && span.http.method =~ \"^$method$$\"}",
           "limit": 50,
           "tableType": "traces",
           "refId": "A"

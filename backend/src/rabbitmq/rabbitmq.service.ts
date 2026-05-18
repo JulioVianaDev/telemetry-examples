@@ -1,8 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import * as amqp from 'amqplib';
 
 @Injectable()
 export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RabbitmqService.name);
   private connection: amqp.ChannelModel | null = null;
   private channel: amqp.Channel | null = null;
 
@@ -24,10 +25,10 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
         this.channel = await this.connection.createChannel();
         await this.channel!.assertQueue(RabbitmqService.QUEUE, { durable: true });
         await this.channel!.assertQueue(RabbitmqService.UPDATES_QUEUE, { durable: true });
-        console.log(`[RabbitMQ] connected`);
+        this.logger.log('Connected');
         return;
       } catch (err) {
-        console.warn(`[RabbitMQ] connection attempt ${attempt}/${maxRetries} failed, retrying in 3s...`);
+        this.logger.warn(`Connection attempt ${attempt}/${maxRetries} failed, retrying in 3s...`);
         if (attempt === maxRetries) throw err;
         await new Promise((r) => setTimeout(r, 3000));
       }

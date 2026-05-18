@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { context, propagation, SpanKind, Tracer } from '@opentelemetry/api';
@@ -11,6 +11,7 @@ import { RabbitmqService } from '../rabbitmq/rabbitmq.service';
 
 @Injectable()
 export class MessageConsumer implements OnModuleInit {
+  private readonly logger = new Logger(MessageConsumer.name);
   private readonly tracer: Tracer;
 
   constructor(
@@ -50,11 +51,11 @@ export class MessageConsumer implements OnModuleInit {
                 const data = JSON.parse(msg.content.toString());
                 span.setAttribute('messaging.message_id', data.id);
                 span.setAttribute('messaging.operation', 'create');
-                console.log(`[Consumer] processing message ${data.id}`);
+                this.logger.log(`Processing message ${data.id}`);
 
                 await this.messageRepo.update(data.id, { status: 'processed' });
 
-                console.log(`[Consumer] message ${data.id} processed`);
+                this.logger.log(`Message ${data.id} processed`);
               } catch (err) {
                 span.recordException(err as Error);
                 throw err;
@@ -66,7 +67,7 @@ export class MessageConsumer implements OnModuleInit {
         });
       },
     );
-    console.log('[Consumer] listening on queue "messages"');
+    this.logger.log('Listening on queue "messages"');
 
     // consume update messages
     await this.rabbitmqService.consume(
@@ -85,14 +86,14 @@ export class MessageConsumer implements OnModuleInit {
                 span.setAttribute('messaging.message_id', data.id);
                 span.setAttribute('messaging.operation', 'update');
                 span.setAttribute('messaging.content', data.content);
-                console.log(`[Consumer] processing update for message ${data.id}`);
+                this.logger.log(`Processing update for message ${data.id}`);
 
                 await this.messageRepo.update(data.id, {
                   status: 'processed',
                   content: data.content,
                 });
 
-                console.log(`[Consumer] message ${data.id} update processed`);
+                this.logger.log(`Message ${data.id} update processed`);
               } catch (err) {
                 span.recordException(err as Error);
                 throw err;
@@ -104,6 +105,6 @@ export class MessageConsumer implements OnModuleInit {
         });
       },
     );
-    console.log('[Consumer] listening on queue "message-updates"');
+    this.logger.log('Listening on queue "message-updates"');
   }
 }

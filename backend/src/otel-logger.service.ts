@@ -1,54 +1,61 @@
-import { LoggerService as NestLoggerService } from '@nestjs/common';
+import { ConsoleLogger } from '@nestjs/common';
 import { logs, SeverityNumber } from '@opentelemetry/api-logs';
 
-export class OtelLoggerService implements NestLoggerService {
-  private readonly logger = logs.getLogger('nestjs');
+export class OtelLoggerService extends ConsoleLogger {
+  private readonly otelLogger = logs.getLogger('nestjs');
 
-  log(message: string, context?: string) {
-    this.emit(SeverityNumber.INFO, message, context);
-    console.log(this.format('LOG', message, context));
+  log(message: any, ...optionalParams: any[]) {
+    super.log(message, ...optionalParams);
+    this.emitOtel(SeverityNumber.INFO, message, optionalParams);
   }
 
-  error(message: string, trace?: string, context?: string) {
-    this.emit(SeverityNumber.ERROR, message, context, trace);
-    console.error(this.format('ERROR', message, context));
-    if (trace) console.error(trace);
+  error(message: any, ...optionalParams: any[]) {
+    super.error(message, ...optionalParams);
+    const stack =
+      typeof optionalParams[0] === 'string' ? optionalParams[0] : undefined;
+    this.emitOtel(SeverityNumber.ERROR, message, optionalParams, stack);
   }
 
-  warn(message: string, context?: string) {
-    this.emit(SeverityNumber.WARN, message, context);
-    console.warn(this.format('WARN', message, context));
+  warn(message: any, ...optionalParams: any[]) {
+    super.warn(message, ...optionalParams);
+    this.emitOtel(SeverityNumber.WARN, message, optionalParams);
   }
 
-  debug(message: string, context?: string) {
-    this.emit(SeverityNumber.DEBUG, message, context);
-    console.debug(this.format('DEBUG', message, context));
+  debug(message: any, ...optionalParams: any[]) {
+    super.debug(message, ...optionalParams);
+    this.emitOtel(SeverityNumber.DEBUG, message, optionalParams);
   }
 
-  verbose(message: string, context?: string) {
-    this.emit(SeverityNumber.TRACE, message, context);
-    console.log(this.format('VERBOSE', message, context));
+  verbose(message: any, ...optionalParams: any[]) {
+    super.verbose(message, ...optionalParams);
+    this.emitOtel(SeverityNumber.TRACE, message, optionalParams);
   }
 
-  private emit(
-    severityNumber: SeverityNumber,
-    message: string,
-    context?: string,
-    trace?: string,
+  fatal(message: any, ...optionalParams: any[]) {
+    super.fatal(message, ...optionalParams);
+    this.emitOtel(SeverityNumber.FATAL, message, optionalParams);
+  }
+
+  private emitOtel(
+    severity: SeverityNumber,
+    message: any,
+    optionalParams: any[],
+    stack?: string,
   ) {
-    this.logger.emit({
-      severityNumber,
-      severityText: SeverityNumber[severityNumber],
-      body: message,
+    const context = this.extractContext(optionalParams);
+    this.otelLogger.emit({
+      severityNumber: severity,
+      severityText: SeverityNumber[severity],
+      body: typeof message === 'string' ? message : JSON.stringify(message),
       attributes: {
         ...(context ? { 'nestjs.context': context } : {}),
-        ...(trace ? { 'exception.stacktrace': trace } : {}),
+        ...(stack ? { 'exception.stacktrace': stack } : {}),
       },
     });
   }
 
-  private format(level: string, message: string, context?: string): string {
-    const ctx = context ? `[${context}] ` : '';
-    return `${ctx}${level} - ${message}`;
+  private extractContext(optionalParams: any[]): string | undefined {
+    const last = optionalParams[optionalParams.length - 1];
+    return typeof last === 'string' ? last : this.context;
   }
 }
