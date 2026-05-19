@@ -4,6 +4,10 @@ import { Type } from 'class-transformer';
 export class QueryMessageDto {
   @IsOptional()
   @IsString()
+  tenantId?: string;
+
+  @IsOptional()
+  @IsString()
   status?: string;
 
   @IsOptional()

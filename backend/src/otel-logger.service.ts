@@ -60,6 +60,8 @@ export class OtelLoggerService extends ConsoleLogger {
         ...(spanContext?.spanId ? { spanId: spanContext.spanId } : {}),
         ...(httpCtx?.method ? { http_method: httpCtx.method } : {}),
         ...(httpCtx?.route ? { http_route: httpCtx.route } : {}),
+        ...(httpCtx?.tenantId ? { tenant_id: httpCtx.tenantId } : {}),
+        ...(httpCtx?.userId ? { user_id: httpCtx.userId } : {}),
       },
     });
   }

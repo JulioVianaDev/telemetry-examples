@@ -10,6 +10,8 @@ import { AsyncLocalStorage } from 'async_hooks';
 export interface HttpRequestContext {
   method: string;
   route: string;
+  tenantId?: string;
+  userId?: string;
 }
 
 export const httpContextStorage = new AsyncLocalStorage<HttpRequestContext>();
@@ -26,9 +28,11 @@ export class HttpContextInterceptor implements NestInterceptor {
     const route: string = req.route
       ? req.baseUrl + req.route.path
       : req.path;
+    const tenantId: string | undefined = req.tenantId ?? undefined;
+    const userId: string | undefined = req.user?.id ?? undefined;
 
     return new Observable((subscriber) => {
-      httpContextStorage.run({ method, route }, () => {
+      httpContextStorage.run({ method, route, tenantId, userId }, () => {
         next.handle().subscribe({
           next: (val) => subscriber.next(val),
           error: (err) => subscriber.error(err),

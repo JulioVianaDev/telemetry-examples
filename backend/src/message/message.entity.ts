@@ -16,6 +16,9 @@ export class Message {
   @Column({ default: 'pending' })
   status: string;
 
+  @Column()
+  tenantId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

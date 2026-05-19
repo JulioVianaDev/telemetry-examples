@@ -51,11 +51,14 @@ export class MessageConsumer implements OnModuleInit {
                 const data = JSON.parse(msg.content.toString());
                 span.setAttribute('messaging.message_id', data.id);
                 span.setAttribute('messaging.operation', 'create');
-                this.logger.log(`Processing message ${data.id}`);
+                if (data.tenantId) {
+                  span.setAttribute('tenant.id', data.tenantId);
+                }
+                this.logger.log(`Processing message ${data.id} [tenant=${data.tenantId}]`);
 
                 await this.messageRepo.update(data.id, { status: 'processed' });
 
-                this.logger.log(`Message ${data.id} processed`);
+                this.logger.log(`Message ${data.id} processed [tenant=${data.tenantId}]`);
               } catch (err) {
                 span.recordException(err as Error);
                 throw err;
@@ -86,14 +89,17 @@ export class MessageConsumer implements OnModuleInit {
                 span.setAttribute('messaging.message_id', data.id);
                 span.setAttribute('messaging.operation', 'update');
                 span.setAttribute('messaging.content', data.content);
-                this.logger.log(`Processing update for message ${data.id}`);
+                if (data.tenantId) {
+                  span.setAttribute('tenant.id', data.tenantId);
+                }
+                this.logger.log(`Processing update for message ${data.id} [tenant=${data.tenantId}]`);
 
                 await this.messageRepo.update(data.id, {
                   status: 'processed',
                   content: data.content,
                 });
 
-                this.logger.log(`Message ${data.id} update processed`);
+                this.logger.log(`Message ${data.id} update processed [tenant=${data.tenantId}]`);
               } catch (err) {
                 span.recordException(err as Error);
                 throw err;

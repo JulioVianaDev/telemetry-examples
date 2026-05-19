@@ -21,6 +21,7 @@ export class MessageService {
   async create(dto: CreateMessageDto): Promise<Message> {
     const message = this.messageRepo.create({
       content: dto.content,
+      tenantId: dto.tenantId,
       status: 'pending',
     });
     const saved = await this.messageRepo.save(message);
@@ -31,6 +32,7 @@ export class MessageService {
     const delay = Math.floor(Math.random() * 51);
     await tracer.startActiveSpan('random timeout', async (timeoutSpan) => {
       timeoutSpan.setAttribute('delay.ms', delay);
+      timeoutSpan.setAttribute('tenant.id', dto.tenantId);
       await new Promise((resolve) => setTimeout(resolve, delay));
       timeoutSpan.end();
     });
@@ -42,13 +44,14 @@ export class MessageService {
           span.setAttribute('messaging.system', 'rabbitmq');
           span.setAttribute('messaging.destination', RabbitmqService.QUEUE);
           span.setAttribute('messaging.message_id', saved.id);
+          span.setAttribute('tenant.id', saved.tenantId);
 
           const headers: Record<string, string> = {};
           propagation.inject(context.active(), headers);
 
           await this.rabbitmqService.publish(
             RabbitmqService.QUEUE,
-            { id: saved.id, content: saved.content },
+            { id: saved.id, content: saved.content, tenantId: saved.tenantId },
             headers,
           );
 
@@ -70,6 +73,11 @@ export class MessageService {
     return await tracer.startActiveSpan('findAll messages', async (span) => {
       try {
         const where: Record<string, unknown> = {};
+        if (query.tenantId) {
+          where.tenantId = query.tenantId;
+          span.setAttribute('query.tenantId', query.tenantId);
+          span.setAttribute('tenant.id', query.tenantId);
+        }
         if (query.status) {
           where.status = query.status;
           span.setAttribute('query.status', query.status);
@@ -115,6 +123,7 @@ export class MessageService {
         }
         span.setAttribute('message.found', true);
         span.setAttribute('message.status', message.status);
+        span.setAttribute('tenant.id', message.tenantId);
         return message;
       } catch (err) {
         span.recordException(err as Error);
@@ -142,6 +151,7 @@ export class MessageService {
     const delay = Math.floor(Math.random() * 51);
     await tracer.startActiveSpan('random timeout', async (timeoutSpan) => {
       timeoutSpan.setAttribute('delay.ms', delay);
+      timeoutSpan.setAttribute('tenant.id', saved.tenantId);
       await new Promise((resolve) => setTimeout(resolve, delay));
       timeoutSpan.end();
     });
@@ -158,6 +168,7 @@ export class MessageService {
           );
           span.setAttribute('messaging.message_id', saved.id);
           span.setAttribute('messaging.operation', 'update');
+          span.setAttribute('tenant.id', saved.tenantId);
 
           const headers: Record<string, string> = {};
           propagation.inject(context.active(), headers);
@@ -167,6 +178,7 @@ export class MessageService {
             {
               id: saved.id,
               content: saved.content,
+              tenantId: saved.tenantId,
               operation: 'update',
             },
             headers,
@@ -239,12 +251,14 @@ export class MessageService {
     return await tracer.startActiveSpan('remove message', async (span) => {
       try {
         span.setAttribute('message.id', id);
-        const result = await this.messageRepo.delete(id);
-        if (result.affected === 0) {
+        const message = await this.messageRepo.findOneBy({ id });
+        if (!message) {
           span.setAttribute('message.found', false);
           throw new NotFoundException(`Message ${id} not found`);
         }
         span.setAttribute('message.found', true);
+        span.setAttribute('tenant.id', message.tenantId);
+        await this.messageRepo.delete(id);
         return { deleted: true, id };
       } catch (err) {
         span.recordException(err as Error);

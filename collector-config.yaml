@@ -37,6 +37,10 @@ exporters:
     default_labels_enabled:
       exporter: false
       job: true
+    labels:
+      attributes:
+        tenant_id: ""
+        user_id: ""
 
   debug:
     verbosity: basic

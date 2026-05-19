@@ -1,8 +1,8 @@
 {
   "uid": "requests-dashboard",
   "title": "Requests Dashboard",
-  "description": "Detailed endpoint analysis with drill-down to individual traces",
-  "tags": ["backend", "requests", "traces"],
+  "description": "Detailed endpoint analysis with drill-down to individual traces — filterable by tenant",
+  "tags": ["backend", "requests", "traces", "multi-tenant"],
   "timezone": "browser",
   "editable": true,
   "refresh": "10s",
@@ -12,6 +12,19 @@
   },
   "templating": {
     "list": [
+      {
+        "name": "tenant",
+        "label": "Tenant",
+        "type": "query",
+        "datasource": { "uid": "prometheus" },
+        "query": "label_values(traces_spanmetrics_calls_total{service=\"backend-nestjs\"}, tenant_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "multi": false,
+        "sort": 1
+      },
       {
         "name": "method",
         "label": "Method",
@@ -201,7 +214,7 @@
                 "value": [
                   {
                     "title": "Drill down into ${__value.text}",
-                    "url": "/d/requests-dashboard/requests-dashboard?var-method=${__data.fields.http_method}&var-endpoint=${__data.fields.http_route}&${__url_time_range}",
+                    "url": "/d/requests-dashboard/requests-dashboard?var-method=${__data.fields.http_method}&var-endpoint=${__data.fields.http_route}&var-tenant=${tenant}&${__url_time_range}",
                     "targetBlank": false
                   }
                 ]
@@ -512,24 +525,85 @@
       }
     },
     {
-      "id": 102,
-      "title": "Individual Requests — $method $endpoint",
+      "id": 104,
+      "title": "Tenant Breakdown — $method $endpoint",
       "type": "row",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
       "collapsed": false,
       "panels": []
     },
     {
+      "id": 7,
+      "title": "Span Rate by Tenant — $method $endpoint",
+      "description": "Requests per tenant from Tempo span metrics for the selected endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (tenant_id)",
+          "legendFormat": "{{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "gradientMode": "scheme"
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Tenant Latency (p95) — $method $endpoint",
+      "description": "p95 latency per tenant",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (le, tenant_id)) >= 0",
+          "legendFormat": "p95 {{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 102,
+      "title": "Individual Requests — $method $endpoint",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "id": 5,
-      "title": "Traces — $method $endpoint  |  Click a Trace ID to inspect",
-      "description": "Individual traced requests. Click any Trace ID to open the full trace waterfall.",
+      "title": "Traces — $method $endpoint  |  Tenant: $tenant  |  Click a Trace ID to inspect",
+      "description": "Individual traced requests filtered by tenant. Click any Trace ID to open the full trace waterfall.",
       "type": "table",
-      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 28 },
       "datasource": { "uid": "tempo" },
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"^$endpoint$$\" && span.http.method =~ \"^$method$$\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \"^$endpoint$$\" && span.http.method =~ \"^$method$$\" && span.tenant.id =~ \"$tenant\"}",
           "limit": 50,
           "tableType": "traces",
           "refId": "A"
@@ -566,7 +640,7 @@
                   },
                   {
                     "title": "Filter logs by this Trace ID",
-                    "url": "/d/requests-dashboard/requests-dashboard?var-method=${method}&var-endpoint=${endpoint}&var-traceId=${__value.raw}&${__url_time_range}",
+                    "url": "/d/requests-dashboard/requests-dashboard?var-method=${method}&var-endpoint=${endpoint}&var-tenant=${tenant}&var-traceId=${__value.raw}&${__url_time_range}",
                     "targetBlank": false
                   }
                 ]
@@ -618,20 +692,20 @@
       "id": 103,
       "title": "Logs",
       "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 },
       "collapsed": false,
       "panels": []
     },
     {
       "id": 6,
-      "title": "Application Logs — $method $endpoint",
-      "description": "All service logs. Each log carries a traceId — match it with a Trace ID from the table above to correlate logs with filtered requests.",
+      "title": "Application Logs — $method $endpoint — Tenant: $tenant",
+      "description": "All service logs filtered by tenant. Each log carries a traceId — match it with a Trace ID from the table above.",
       "type": "logs",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 35 },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 43 },
       "datasource": { "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"backend-nestjs\"} | json | attributes_http_method =~ `$method` | attributes_http_route =~ `$endpoint`",
+          "expr": "{job=\"backend-nestjs\"} | json | tenant_id =~ `$tenant` | attributes_http_method =~ `$method` | attributes_http_route =~ `$endpoint`",
           "legendFormat": "",
           "refId": "A"
         }

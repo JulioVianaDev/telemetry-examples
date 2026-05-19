@@ -1,8 +1,8 @@
 {
   "uid": "backend-overview",
   "title": "Backend Overview",
-  "description": "Full observability: requests, latency, errors, traces & logs",
-  "tags": ["backend", "nestjs", "otel"],
+  "description": "Full observability: requests, latency, errors, traces & logs — filterable by tenant",
+  "tags": ["backend", "nestjs", "otel", "multi-tenant"],
   "timezone": "browser",
   "editable": true,
   "refresh": "10s",
@@ -21,16 +21,39 @@
         "current": { "text": "backend-nestjs", "value": "backend-nestjs" },
         "includeAll": true,
         "multi": false
+      },
+      {
+        "name": "tenant",
+        "label": "Tenant",
+        "type": "query",
+        "datasource": { "uid": "prometheus" },
+        "query": "label_values(traces_spanmetrics_calls_total{service=\"backend-nestjs\"}, tenant_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "multi": false,
+        "sort": 1
       }
     ]
   },
   "panels": [
     {
+      "id": 20,
+      "title": "Tenant Filter Info",
+      "type": "text",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "### Use the **Tenant** dropdown above to filter all panels by tenant.\nTraces, logs, and span metrics are filtered. Standard HTTP metrics do not carry tenant labels.\n\n**Tenants:** `tenant-acme` | `tenant-globex` | `tenant-initech` — **Users without tenant:** `user-6 (Frank)`, `user-7 (Grace)`"
+      }
+    },
+    {
       "id": 1,
       "title": "Request Rate (req/s)",
       "description": "HTTP requests per second by route and method",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 3 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -58,7 +81,7 @@
       "title": "Request Latency (p50 / p95 / p99)",
       "description": "Response time percentiles in milliseconds",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 3 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -94,7 +117,7 @@
       "title": "Error & Blocked Rate (%)",
       "description": "Percentage of 4xx and 5xx responses",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 3 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -132,7 +155,7 @@
       "id": 4,
       "title": "Total Requests",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 11 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -162,7 +185,7 @@
       "id": 5,
       "title": "Avg Latency",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 11 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -194,7 +217,7 @@
       "id": 18,
       "title": "Blocked Requests (4xx)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 11 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -225,7 +248,7 @@
       "id": 6,
       "title": "Error Count (5xx)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 8 },
+      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 11 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -256,11 +279,11 @@
       "id": 7,
       "title": "Span Calls (from Tempo)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 8 },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 11 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m]))",
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m]))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -287,7 +310,7 @@
       "title": "Requests by Status Code",
       "description": "Distribution of HTTP status codes over time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -328,7 +351,7 @@
       "title": "Latency by Route",
       "description": "Average response time per route",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -350,15 +373,150 @@
       }
     },
     {
-      "id": 14,
-      "title": "Trace Span Rate by Operation",
-      "description": "Request rate derived from Tempo span metrics",
+      "id": 21,
+      "title": "Tenant Activity",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 22,
+      "title": "Span Rate by Tenant",
+      "description": "Request rate per tenant from Tempo span metrics",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (span_name)",
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (tenant_id)",
+          "legendFormat": "{{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "gradientMode": "scheme"
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "title": "Span Latency by Tenant (p95)",
+      "description": "p95 latency per tenant from Tempo span metrics",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (le, tenant_id)) >= 0",
+          "legendFormat": "p95 {{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 24,
+      "title": "Tenant Request Distribution",
+      "description": "Pie chart of requests by tenant",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\".+\"}) by (tenant_id)",
+          "legendFormat": "{{tenant_id}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "donut",
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 25,
+      "title": "Tenant Error Rate",
+      "description": "Errors per tenant from span metrics (status_code=STATUS_CODE_ERROR)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", status_code=\"STATUS_CODE_ERROR\", tenant_id=~\"$tenant\"}[5m])) by (tenant_id)",
+          "legendFormat": "errors {{tenant_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 26,
+      "title": "Queue Processing by Tenant",
+      "description": "Consumer span rate per tenant from Tempo span metrics",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"consumer\", span_kind=\"SPAN_KIND_CONSUMER\", tenant_id=~\"$tenant\"}[5m])) by (tenant_id, span_name)",
+          "legendFormat": "{{tenant_id}} — {{span_name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 20
+          },
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Trace Span Rate by Operation",
+      "description": "Request rate derived from Tempo span metrics, filtered by tenant",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "datasource": { "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (span_name)",
           "legendFormat": "{{span_name}}",
           "refId": "A"
         }
@@ -378,18 +536,18 @@
     {
       "id": 15,
       "title": "Trace Span Latency (from Tempo)",
-      "description": "p50/p95 latency from Tempo span metrics",
+      "description": "p50/p95 latency from Tempo span metrics, filtered by tenant",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name)) >= 0",
+          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (le, span_name)) >= 0",
           "legendFormat": "p50 {{span_name}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\"}[5m])) by (le, span_name)) >= 0",
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=\"backend-nestjs\", span_kind=\"SPAN_KIND_SERVER\", tenant_id=~\"$tenant\"}[5m])) by (le, span_name)) >= 0",
           "legendFormat": "p95 {{span_name}}",
           "refId": "B"
         }
@@ -408,15 +566,15 @@
     },
     {
       "id": 10,
-      "title": "Recent Traces",
-      "description": "Search and explore traces from Tempo - click a Trace ID to see the full waterfall",
+      "title": "Recent Traces (filtered by tenant)",
+      "description": "Search and explore traces — filtered by selected tenant",
       "type": "table",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 28 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
       "datasource": { "uid": "tempo" },
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \".+\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \".+\" && span.tenant.id =~ \"$tenant\"}",
           "limit": 20,
           "tableType": "traces",
           "refId": "A"
@@ -486,14 +644,14 @@
     },
     {
       "id": 11,
-      "title": "Application Logs",
-      "description": "Logs from the backend service via Loki",
+      "title": "Application Logs (filtered by tenant)",
+      "description": "Logs from the backend service via Loki — filtered by selected tenant",
       "type": "logs",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 38 },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 58 },
       "datasource": { "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"backend-nestjs\"} | json",
+          "expr": "{job=\"backend-nestjs\"} | json | tenant_id =~ `$tenant`",
           "legendFormat": "",
           "refId": "A"
         }
@@ -514,7 +672,7 @@
       "title": "Database Query Duration (from Tempo spans)",
       "description": "PostgreSQL query latency from pg-query span metrics",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 48 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 68 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -545,7 +703,7 @@
       "title": "Node.js Runtime - V8 Heap Memory",
       "description": "V8 heap memory usage by space",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 48 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 68 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -572,7 +730,7 @@
       "title": "Event Loop Delay",
       "description": "Node.js event loop delay percentiles",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 56 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 76 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {
@@ -608,7 +766,7 @@
       "title": "Event Loop Utilization",
       "description": "How busy the Node.js event loop is (0-1)",
       "type": "gauge",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 56 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 76 },
       "datasource": { "uid": "prometheus" },
       "targets": [
         {

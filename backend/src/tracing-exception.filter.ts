@@ -35,6 +35,8 @@ export class TracingExceptionFilter implements ExceptionFilter {
       ? exceptionResponse
       : JSON.stringify(exceptionResponse);
 
+    const tenantId = request.tenantId as string | undefined;
+
     const activeSpan = trace.getActiveSpan();
     if (activeSpan) {
       activeSpan.setAttributes({
@@ -44,6 +46,10 @@ export class TracingExceptionFilter implements ExceptionFilter {
         'error.type': errorType,
         'error.message': errorMessage,
       });
+
+      if (tenantId) {
+        activeSpan.setAttribute('tenant.id', tenantId);
+      }
 
       if (exception instanceof Error) {
         activeSpan.setAttribute('error.stack', exception.stack || '');
@@ -85,6 +91,8 @@ export class TracingExceptionFilter implements ExceptionFilter {
           ...(spanContext?.spanId ? { spanId: spanContext.spanId } : {}),
           http_method: httpCtx?.method ?? request.method,
           http_route: httpCtx?.route ?? route,
+          ...(httpCtx?.tenantId ? { tenant_id: httpCtx.tenantId } : {}),
+          ...(httpCtx?.userId ? { user_id: httpCtx.userId } : {}),
         },
       });
     }

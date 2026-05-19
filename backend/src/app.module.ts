@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
 import { MessageModule } from './message/message.module';
 import { Message } from './message/message.entity';
+import { UsersController } from './users.controller';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { Message } from './message/message.entity';
     RabbitmqModule,
     MessageModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, UsersController],
   providers: [AppService],
 })
 export class AppModule {}
