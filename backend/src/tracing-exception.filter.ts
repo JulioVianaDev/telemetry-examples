@@ -61,7 +61,7 @@ export class TracingExceptionFilter implements ExceptionFilter {
     }
 
     // Log real errors (not DTO/validation 400s) directly to OTel so they appear in Loki
-    if (status >= 500 || (!isHttpException && status >= 400)) {
+    if ( status != 400) {
       const route = request.route?.path
         ? request.baseUrl + request.route.path
         : request.url;
