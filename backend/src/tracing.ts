@@ -20,6 +20,8 @@ import {
   SimpleLogRecordProcessor,
   LoggerProvider,
 } from '@opentelemetry/sdk-logs';
+import { IncomingMessage } from 'http';
+import { resolveUser } from './users.mock';
 
 const exporterUrl =
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317';
@@ -64,6 +66,20 @@ const sdk = new NodeSDK({
   instrumentations: [
     getNodeAutoInstrumentations({
       '@opentelemetry/instrumentation-pg': { enabled: false },
+      '@opentelemetry/instrumentation-http': {
+        requestHook: (span, request) => {
+          const req = request as IncomingMessage;
+          const userId = req.headers['x-user-id'] as string | undefined;
+          const user = resolveUser(userId);
+          if (user) {
+            span.setAttribute('user.id', user.id);
+            span.setAttribute('user.name', user.name);
+            if (user.tenantId) {
+              span.setAttribute('tenant.id', user.tenantId);
+            }
+          }
+        },
+      },
     }),
   ],
   traceExporter: new OTLPTraceExporter({ url: exporterUrl }),

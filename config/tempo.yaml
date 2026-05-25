@@ -35,6 +35,9 @@ metrics_generator:
       dimensions:
         - tenant.id
         - user.id
+        - http.method
+        - http.route
+        - http.status_code
   storage:
     path: /var/tempo/generator/wal
     remote_write:

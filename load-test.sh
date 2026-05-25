@@ -6,6 +6,10 @@ BASE_URL="http://localhost:3333"
 NUM=${1:-20}
 IDS=()
 
+# Mock users with their tenant IDs (must match backend/src/users.mock.ts)
+USER_IDS=("user-1" "user-2" "user-3" "user-4" "user-5")
+TENANT_IDS=("tenant-acme" "tenant-acme" "tenant-globex" "tenant-globex" "tenant-initech")
+
 echo "========================================="
 echo "  Load Test - $NUM messages"
 echo "========================================="
@@ -13,20 +17,24 @@ echo "========================================="
 # --- Health Check ---
 echo ""
 echo "[1/7] Health Check"
-curl -s "$BASE_URL/"
+curl -s "$BASE_URL/" -H "X-User-Id: user-1"
 echo ""
 
 # --- Create Messages ---
 echo ""
 echo "[2/7] Creating $NUM messages..."
 for i in $(seq 1 "$NUM"); do
+  IDX=$(( (i - 1) % ${#USER_IDS[@]} ))
+  CUR_USER="${USER_IDS[$IDX]}"
+  CUR_TENANT="${TENANT_IDS[$IDX]}"
   RESPONSE=$(curl -s -X POST "$BASE_URL/messages" \
     -H "Content-Type: application/json" \
-    -d "{\"content\": \"Load test message $i\"}")
+    -H "X-User-Id: $CUR_USER" \
+    -d "{\"content\": \"Load test message $i\", \"tenantId\": \"$CUR_TENANT\"}")
   ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
   if [ -n "$ID" ]; then
     IDS+=("$ID")
-    echo "  Created: $ID"
+    echo "  Created: $ID (user=$CUR_USER tenant=$CUR_TENANT)"
   else
     echo "  Error: $RESPONSE"
   fi
@@ -41,31 +49,31 @@ echo ""
 echo "[3/7] Listing messages with different queries..."
 
 echo "  GET /messages (default)"
-curl -s "$BASE_URL/messages" | head -c 200
+curl -s "$BASE_URL/messages" -H "X-User-Id: user-1" | head -c 200
 echo ""
 
 echo "  GET /messages?limit=5&offset=0"
-curl -s "$BASE_URL/messages?limit=5&offset=0" | head -c 200
+curl -s "$BASE_URL/messages?limit=5&offset=0" -H "X-User-Id: user-2" | head -c 200
 echo ""
 
 echo "  GET /messages?limit=3&offset=2"
-curl -s "$BASE_URL/messages?limit=3&offset=2" | head -c 200
+curl -s "$BASE_URL/messages?limit=3&offset=2" -H "X-User-Id: user-3" | head -c 200
 echo ""
 
 echo "  GET /messages?status=pending"
-curl -s "$BASE_URL/messages?status=pending" | head -c 200
+curl -s "$BASE_URL/messages?status=pending" -H "X-User-Id: user-1" | head -c 200
 echo ""
 
 echo "  GET /messages?status=processed"
-curl -s "$BASE_URL/messages?status=processed" | head -c 200
+curl -s "$BASE_URL/messages?status=processed" -H "X-User-Id: user-4" | head -c 200
 echo ""
 
 echo "  GET /messages?content=Load"
-curl -s "$BASE_URL/messages?content=Load" | head -c 200
+curl -s "$BASE_URL/messages?content=Load" -H "X-User-Id: user-5" | head -c 200
 echo ""
 
 echo "  GET /messages?status=processed&limit=3&offset=0"
-curl -s "$BASE_URL/messages?status=processed&limit=3&offset=0" | head -c 200
+curl -s "$BASE_URL/messages?status=processed&limit=3&offset=0" -H "X-User-Id: user-1" | head -c 200
 echo ""
 
 # --- Get Single Messages ---
@@ -73,8 +81,9 @@ echo ""
 echo "[4/7] Getting individual messages..."
 for i in $(seq 0 4); do
   if [ $i -lt ${#IDS[@]} ]; then
+    IDX=$(( i % ${#USER_IDS[@]} ))
     echo "  GET /messages/${IDS[$i]}"
-    curl -s "$BASE_URL/messages/${IDS[$i]}" | head -c 200
+    curl -s "$BASE_URL/messages/${IDS[$i]}" -H "X-User-Id: ${USER_IDS[$IDX]}" | head -c 200
     echo ""
   fi
 done
@@ -85,9 +94,11 @@ echo "[5/7] Updating messages..."
 HALF=$((NUM / 2))
 for i in $(seq 0 $((HALF - 1))); do
   if [ $i -lt ${#IDS[@]} ]; then
+    IDX=$(( i % ${#USER_IDS[@]} ))
     echo "  PUT /messages/${IDS[$i]}"
     curl -s -X PUT "$BASE_URL/messages/${IDS[$i]}" \
       -H "Content-Type: application/json" \
+      -H "X-User-Id: ${USER_IDS[$IDX]}" \
       -d "{\"content\": \"Updated message $((i + 1))\"}" | head -c 200
     echo ""
   fi
@@ -100,7 +111,7 @@ echo "[6/8] Simulating 500 Internal Server Errors..."
 ERRORS=("default" "null" "undefined" "timeout" "db" "oom" "type")
 for err_type in "${ERRORS[@]}"; do
   echo "  GET /messages/test/error?type=$err_type (500)"
-  curl -s "$BASE_URL/messages/test/error?type=$err_type" | head -c 300
+  curl -s "$BASE_URL/messages/test/error?type=$err_type" -H "X-User-Id: user-1" | head -c 300
   echo ""
 done
 
@@ -111,26 +122,29 @@ echo "[7/8] Triggering 4xx errors for telemetry..."
 echo "  POST /messages - empty content (400)"
 curl -s -X POST "$BASE_URL/messages" \
   -H "Content-Type: application/json" \
-  -d '{"content": ""}' | head -c 300
+  -H "X-User-Id: user-1" \
+  -d '{"content": "", "tenantId": "tenant-acme"}' | head -c 300
 echo ""
 
 echo "  POST /messages - missing field (400)"
 curl -s -X POST "$BASE_URL/messages" \
   -H "Content-Type: application/json" \
+  -H "X-User-Id: user-1" \
   -d '{}' | head -c 300
 echo ""
 
 echo "  GET /messages/:id - not found (404)"
-curl -s "$BASE_URL/messages/00000000-0000-0000-0000-000000000000" | head -c 300
+curl -s "$BASE_URL/messages/00000000-0000-0000-0000-000000000000" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  GET /messages/:id - invalid UUID (400)"
-curl -s "$BASE_URL/messages/not-a-uuid" | head -c 300
+curl -s "$BASE_URL/messages/not-a-uuid" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  PUT /messages/:id - not found (404)"
 curl -s -X PUT "$BASE_URL/messages/00000000-0000-0000-0000-000000000000" \
   -H "Content-Type: application/json" \
+  -H "X-User-Id: user-1" \
   -d '{"content": "nope"}' | head -c 300
 echo ""
 
@@ -138,6 +152,7 @@ echo "  PUT /messages/:id - empty content (400)"
 if [ ${#IDS[@]} -gt 0 ]; then
   curl -s -X PUT "$BASE_URL/messages/${IDS[0]}" \
     -H "Content-Type: application/json" \
+    -H "X-User-Id: user-1" \
     -d '{"content": ""}' | head -c 300
   echo ""
 fi
@@ -145,29 +160,31 @@ fi
 echo "  PUT /messages/:id - invalid UUID (400)"
 curl -s -X PUT "$BASE_URL/messages/bad-uuid" \
   -H "Content-Type: application/json" \
+  -H "X-User-Id: user-1" \
   -d '{"content": "nope"}' | head -c 300
 echo ""
 
 echo "  DELETE /messages/:id - not found (404)"
-curl -s -X DELETE "$BASE_URL/messages/00000000-0000-0000-0000-000000000000" | head -c 300
+curl -s -X DELETE "$BASE_URL/messages/00000000-0000-0000-0000-000000000000" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  DELETE /messages/:id - invalid UUID (400)"
-curl -s -X DELETE "$BASE_URL/messages/bad-uuid" | head -c 300
+curl -s -X DELETE "$BASE_URL/messages/bad-uuid" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  GET /messages?limit=-1 - invalid limit (400)"
-curl -s "$BASE_URL/messages?limit=-1" | head -c 300
+curl -s "$BASE_URL/messages?limit=-1" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  GET /messages?limit=999 - limit too high (400)"
-curl -s "$BASE_URL/messages?limit=999" | head -c 300
+curl -s "$BASE_URL/messages?limit=999" -H "X-User-Id: user-1" | head -c 300
 echo ""
 
 echo "  POST /messages - extra field forbidden (400)"
 curl -s -X POST "$BASE_URL/messages" \
   -H "Content-Type: application/json" \
-  -d '{"content": "test", "hacker": true}' | head -c 300
+  -H "X-User-Id: user-1" \
+  -d '{"content": "test", "tenantId": "tenant-acme", "hacker": true}' | head -c 300
 echo ""
 
 # --- Delete some Messages ---
@@ -176,8 +193,9 @@ echo "[8/8] Deleting last 5 messages..."
 START=$((${#IDS[@]} - 5))
 if [ $START -lt 0 ]; then START=0; fi
 for i in $(seq $START $((${#IDS[@]} - 1))); do
+  IDX=$(( i % ${#USER_IDS[@]} ))
   echo "  DELETE /messages/${IDS[$i]}"
-  curl -s -X DELETE "$BASE_URL/messages/${IDS[$i]}" | head -c 200
+  curl -s -X DELETE "$BASE_URL/messages/${IDS[$i]}" -H "X-User-Id: ${USER_IDS[$IDX]}" | head -c 200
   echo ""
 done
 
@@ -187,7 +205,7 @@ echo "========================================="
 echo "  Final state"
 echo "========================================="
 echo ""
-curl -s "$BASE_URL/messages?limit=100"
+curl -s "$BASE_URL/messages?limit=100" -H "X-User-Id: user-1"
 echo ""
 echo ""
 

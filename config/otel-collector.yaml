@@ -41,10 +41,6 @@ exporters:
       exporter: false
       job: true
       level: true
-    labels:
-      attributes:
-        tenant_id: ""
-        user_id: ""
 
   debug:
     verbosity: basic
