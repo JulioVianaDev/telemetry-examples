@@ -9,9 +9,10 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
 
   static readonly QUEUE = 'messages';
   static readonly UPDATES_QUEUE = 'message-updates';
+  static readonly STATS_QUEUE = 'message-stats';
 
   private get url(): string {
-    const host = process.env.RABBITMQ_HOST || 'localhost';
+    const host = process.env.RABBITMQ_HOST || '127.0.0.1';
     const user = process.env.RABBITMQ_USER || 'guest';
     const pass = process.env.RABBITMQ_PASS || 'guest';
     return `amqp://${user}:${pass}@${host}`;
@@ -25,6 +26,7 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
         this.channel = await this.connection.createChannel();
         await this.channel!.assertQueue(RabbitmqService.QUEUE, { durable: true });
         await this.channel!.assertQueue(RabbitmqService.UPDATES_QUEUE, { durable: true });
+        await this.channel!.assertQueue(RabbitmqService.STATS_QUEUE, { durable: true });
         this.logger.log('Connected');
         return;
       } catch (err) {
@@ -49,6 +51,19 @@ export class RabbitmqService implements OnModuleInit, OnModuleDestroy {
       persistent: true,
       headers,
     });
+  }
+
+  async healthCheck(): Promise<{ connected: boolean; queues: number }> {
+    if (!this.channel) {
+      return { connected: false, queues: 0 };
+    }
+    try {
+      // assertQueue on an existing queue is idempotent and confirms the broker is reachable
+      const result = await this.channel.assertQueue(RabbitmqService.QUEUE, { durable: true });
+      return { connected: true, queues: result.messageCount };
+    } catch {
+      return { connected: false, queues: 0 };
+    }
   }
 
   async consume(

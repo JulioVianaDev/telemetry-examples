@@ -26,7 +26,7 @@ export class MessageConsumer implements OnModuleInit {
       spanProcessors: [
         new SimpleSpanProcessor(
           new OTLPTraceExporter({
-            url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317',
+            url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://127.0.0.1:4317',
           }),
         ),
       ],

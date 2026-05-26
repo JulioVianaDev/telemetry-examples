@@ -24,7 +24,7 @@ import { IncomingMessage } from 'http';
 import { resolveUser } from './users.mock';
 
 const exporterUrl =
-  process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317';
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://127.0.0.1:4317';
 const serviceName = process.env.SERVICE_NAME || 'backend-nestjs';
 
 // ─── Prometheus direct scrape endpoint (port 3001) ───
@@ -67,8 +67,15 @@ const sdk = new NodeSDK({
     getNodeAutoInstrumentations({
       '@opentelemetry/instrumentation-pg': { enabled: false },
       '@opentelemetry/instrumentation-http': {
+        ignoreIncomingRequestHook: (request) => {
+          // Ignore Prometheus scrape requests — they pollute span metrics
+          // with empty http.route and no tenant context
+          const url = request.url ?? '';
+          return url === '/metrics' || url.startsWith('/metrics?');
+        },
         requestHook: (span, request) => {
           const req = request as IncomingMessage;
+          span.setAttribute('span.source', 'http');
           const userId = req.headers['x-user-id'] as string | undefined;
           const user = resolveUser(userId);
           if (user) {

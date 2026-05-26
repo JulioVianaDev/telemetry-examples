@@ -574,7 +574,7 @@
       "targets": [
         {
           "queryType": "traceql",
-          "query": "{resource.service.name = \"backend-nestjs\" && span.http.route =~ \".+\" && span.tenant.id =~ \"$tenant\"}",
+          "query": "{resource.service.name = \"backend-nestjs\" && span.span.source = \"http\" && span.http.route =~ \".+\" && span.tenant.id =~ \"$tenant\"}",
           "limit": 20,
           "tableType": "traces",
           "refId": "A"
@@ -651,7 +651,7 @@
       "datasource": { "uid": "loki" },
       "targets": [
         {
-          "expr": "{job=\"backend-nestjs\"} | json | tenant_id =~ `$tenant`",
+          "expr": "{job=\"backend-nestjs\"} | json | attributes_span_source = `http` | attributes_tenant_id =~ `$tenant`",
           "legendFormat": "",
           "refId": "A"
         }

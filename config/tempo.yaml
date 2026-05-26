@@ -33,6 +33,8 @@ metrics_generator:
   processor:
     span_metrics:
       dimensions:
+        - span.source
+        - cron.job
         - tenant.id
         - user.id
         - http.method
