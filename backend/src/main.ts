@@ -6,6 +6,7 @@ import { TracingValidationPipe } from './tracing-validation.pipe';
 import { TracingExceptionFilter } from './tracing-exception.filter';
 import { TenantInterceptor } from './tenant.interceptor';
 import { HttpContextInterceptor } from './http-context.interceptor';
+import { RedisIoAdapter } from './redis/adapters/redis-io.adapter';
 
 async function bootstrap() {
   const otelLogger = new OtelLoggerService();
@@ -19,6 +20,11 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new TracingExceptionFilter());
   app.useGlobalPipes(new TracingValidationPipe());
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis();
+
+  app.useWebSocketAdapter(redisIoAdapter);
+
   const port = process.env.PORT ?? 3333;
   await app.listen(port);
   console.log(`[Backend] Running on port ${port}`);

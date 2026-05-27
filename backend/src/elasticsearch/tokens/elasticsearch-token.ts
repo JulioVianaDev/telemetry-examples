@@ -1,0 +1,2 @@
+export const ELASTICSEARCH_TOKEN = Symbol('ELASTICSEARCH_CLIENT');
+
