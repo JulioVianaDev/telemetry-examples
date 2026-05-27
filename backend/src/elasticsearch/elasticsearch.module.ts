@@ -34,10 +34,10 @@ import { ELASTICSEARCH_REPOSITORY_TOKENS } from './tokens/repository-tokens';
   exports: [
     ELASTICSEARCH_TOKEN,
     // Only export tokens that have corresponding providers registered
-    ELASTICSEARCH_REPOSITORY_TOKENS.FILE_REPOSITORY,
+    ELASTICSEARCH_REPOSITORY_TOKENS.LOG_REPOSITORY,
     // Uncomment when repositories are registered:
+    // ELASTICSEARCH_REPOSITORY_TOKENS.FILE_REPOSITORY,
     // ELASTICSEARCH_REPOSITORY_TOKENS.PRODUCT_REPOSITORY,
-    // ELASTICSEARCH_REPOSITORY_TOKENS.LOG_REPOSITORY,
   ],
 })
 export class ElasticSearchModule {}

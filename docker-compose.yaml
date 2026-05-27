@@ -8,6 +8,7 @@ volumes:
   loki_data:
   tempo_data:
   grafana_data:
+  redis_data:
 
 services:
   db:
@@ -17,10 +18,29 @@ services:
       POSTGRES_USER: guest
       POSTGRES_PASSWORD: guest
       POSTGRES_DB: backend
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=pg_stat_statements"
+      - "-c"
+      - "pg_stat_statements.track=all"
+      - "-c"
+      - "pg_stat_statements.max=10000"
+      - "-c"
+      - "log_min_duration_statement=200"
+      - "-c"
+      - "log_connections=on"
+      - "-c"
+      - "log_disconnections=on"
+      - "-c"
+      - "log_lock_waits=on"
+      - "-c"
+      - "deadlock_timeout=1s"
     ports:
       - "5432:5432"
     volumes:
       - backend_data:/var/lib/postgresql/data
+      - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "guest" -d postgres']
       interval: 5s
@@ -39,8 +59,10 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "15692:15692"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./config/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
     networks: [monitoring]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -48,6 +70,122 @@ services:
       timeout: 15s
       retries: 30
       start_period: 60s
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.1
+    container_name: elasticsearch_telemetry
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+      - http.host=0.0.0.0
+      - http.port=9200
+      - transport.host=127.0.0.1
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: [
+          "CMD-SHELL",
+          "curl -f http://localhost:9200/_cluster/health ||
+          exit 1",
+        ]
+      interval: 30s
+      retries: 3
+      start_period: 60s
+      timeout: 10s
+    networks: [monitoring]
+    restart: unless-stopped
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  redis:
+    image: redis:alpine
+    container_name: redis_telemetry
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      timeout: 5s
+    networks: [monitoring]
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────
+  # Exporters for infrastructure monitoring
+  # ─────────────────────────────────────────
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - //var/run:/var/run:ro
+      - //sys:/sys:ro
+      - //var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    networks: [monitoring]
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://guest:guest@telemetry_db:5432/backend?sslmode=disable"
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "true"
+      PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries.yaml"
+    volumes:
+      - ./config/postgres/exporter-queries.yaml:/etc/postgres_exporter/queries.yaml
+    ports:
+      - "9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [monitoring]
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: redis_exporter
+    environment:
+      REDIS_ADDR: "redis://redis_telemetry:6379"
+      REDIS_EXPORTER_INCL_SYSTEM_METRICS: "true"
+      REDIS_EXPORTER_CHECK_KEYS: "*"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [monitoring]
+    restart: unless-stopped
+
+  elasticsearch-exporter:
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.8.0
+    container_name: elasticsearch_exporter
+    command:
+      - "--es.uri=http://elasticsearch_telemetry:9200"
+      - "--es.all"
+      - "--es.indices"
+      - "--es.indices_settings"
+      - "--es.indices_mappings"
+      - "--es.shards"
+      - "--es.snapshots"
+      - "--es.cluster_settings"
+    ports:
+      - "9114:9114"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks: [monitoring]
     restart: unless-stopped
 
   # ─────────────────────────────────────────

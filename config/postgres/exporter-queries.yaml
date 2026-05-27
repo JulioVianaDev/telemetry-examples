@@ -1,0 +1,163 @@
+pg_stat_statements:
+  query: |
+    SELECT
+      pg_get_userbyid(userid) as user,
+      datname as database,
+      queryid,
+      left(query, 200) as query,
+      calls,
+      total_exec_time / 1000 as total_time_seconds,
+      mean_exec_time / 1000 as mean_time_seconds,
+      max_exec_time / 1000 as max_time_seconds,
+      min_exec_time / 1000 as min_time_seconds,
+      stddev_exec_time / 1000 as stddev_time_seconds,
+      rows,
+      shared_blks_hit,
+      shared_blks_read,
+      blk_read_time / 1000 as blk_read_time_seconds,
+      blk_write_time / 1000 as blk_write_time_seconds
+    FROM pg_stat_statements
+    JOIN pg_database ON pg_stat_statements.dbid = pg_database.oid
+    WHERE calls > 0
+    ORDER BY total_exec_time DESC
+    LIMIT 50
+  master: true
+  metrics:
+    - user:
+        usage: "LABEL"
+        description: "User who executed the query"
+    - database:
+        usage: "LABEL"
+        description: "Database name"
+    - queryid:
+        usage: "LABEL"
+        description: "Query ID"
+    - query:
+        usage: "LABEL"
+        description: "First 200 chars of the query"
+    - calls:
+        usage: "COUNTER"
+        description: "Number of times the query was executed"
+    - total_time_seconds:
+        usage: "COUNTER"
+        description: "Total time spent on the query in seconds"
+    - mean_time_seconds:
+        usage: "GAUGE"
+        description: "Mean execution time in seconds"
+    - max_time_seconds:
+        usage: "GAUGE"
+        description: "Max execution time in seconds"
+    - min_time_seconds:
+        usage: "GAUGE"
+        description: "Min execution time in seconds"
+    - stddev_time_seconds:
+        usage: "GAUGE"
+        description: "Standard deviation of execution time"
+    - rows:
+        usage: "COUNTER"
+        description: "Total rows retrieved or affected"
+    - shared_blks_hit:
+        usage: "COUNTER"
+        description: "Shared blocks cache hits"
+    - shared_blks_read:
+        usage: "COUNTER"
+        description: "Shared blocks read from disk"
+    - blk_read_time_seconds:
+        usage: "COUNTER"
+        description: "Time spent reading blocks in seconds"
+    - blk_write_time_seconds:
+        usage: "COUNTER"
+        description: "Time spent writing blocks in seconds"
+
+pg_connections:
+  query: |
+    SELECT
+      datname as database,
+      usename as user,
+      state,
+      count(*) as count,
+      count(*) FILTER (WHERE wait_event_type IS NOT NULL) as waiting,
+      max(EXTRACT(EPOCH FROM (now() - state_change)))::float as max_idle_seconds
+    FROM pg_stat_activity
+    WHERE pid != pg_backend_pid()
+    GROUP BY datname, usename, state
+  master: true
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Database name"
+    - user:
+        usage: "LABEL"
+        description: "User name"
+    - state:
+        usage: "LABEL"
+        description: "Connection state (active, idle, idle in transaction)"
+    - count:
+        usage: "GAUGE"
+        description: "Number of connections in this state"
+    - waiting:
+        usage: "GAUGE"
+        description: "Number of connections waiting on locks"
+    - max_idle_seconds:
+        usage: "GAUGE"
+        description: "Max seconds a connection has been in current state"
+
+pg_locks:
+  query: |
+    SELECT
+      pg_database.datname as database,
+      pg_locks.mode as lock_mode,
+      count(*) as count
+    FROM pg_locks
+    JOIN pg_database ON pg_locks.database = pg_database.oid
+    GROUP BY pg_database.datname, pg_locks.mode
+  master: true
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Database name"
+    - lock_mode:
+        usage: "LABEL"
+        description: "Lock mode"
+    - count:
+        usage: "GAUGE"
+        description: "Number of locks"
+
+pg_database_size:
+  query: |
+    SELECT
+      datname as database,
+      pg_database_size(datname) as size_bytes
+    FROM pg_database
+    WHERE datistemplate = false
+  master: true
+  metrics:
+    - database:
+        usage: "LABEL"
+        description: "Database name"
+    - size_bytes:
+        usage: "GAUGE"
+        description: "Database size in bytes"
+
+pg_replication_slots:
+  query: |
+    SELECT
+      slot_name,
+      slot_type,
+      active::int as active,
+      pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) as lag_bytes
+    FROM pg_replication_slots
+  master: true
+  metrics:
+    - slot_name:
+        usage: "LABEL"
+        description: "Replication slot name"
+    - slot_type:
+        usage: "LABEL"
+        description: "Slot type"
+    - active:
+        usage: "GAUGE"
+        description: "Whether the slot is active"
+    - lag_bytes:
+        usage: "GAUGE"
+        description: "Replication lag in bytes"

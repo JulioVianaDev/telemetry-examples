@@ -8,6 +8,9 @@ import { MessageModule } from './message/message.module';
 import { Message } from './message/message.entity';
 import { MessageStats } from './message/message-stats.entity';
 import { UsersController } from './users.controller';
+import { RedisCacheModule } from './redis/redis-cache.module';
+import { ElasticSearchModule } from './elasticsearch/elasticsearch.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -40,7 +43,10 @@ import { UsersController } from './users.controller';
       retryDelay: 3000,
     }),
     RabbitmqModule,
+    RedisCacheModule,
+    ElasticSearchModule,
     MessageModule,
+    TelemetryModule,
   ],
   controllers: [AppController, UsersController],
   providers: [AppService],

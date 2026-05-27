@@ -1,0 +1,220 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Container CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}[5m])",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "title": "Container Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "title": "Container Memory vs Limit",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
+            ]
+          },
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"} / container_spec_memory_limit_bytes{name=~\".+\"} > 0",
+          "legendFormat": "{{name}}"
+        }
+      ]
+    },
+    {
+      "title": "Container Network I/O (Received)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(container_network_receive_bytes_total{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}[5m])",
+          "legendFormat": "{{name}} rx"
+        },
+        {
+          "expr": "rate(container_network_transmit_bytes_total{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}[5m])",
+          "legendFormat": "{{name}} tx"
+        }
+      ]
+    },
+    {
+      "title": "Container Filesystem Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "container_fs_usage_bytes{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}",
+          "legendFormat": "{{name}} ({{device}})"
+        }
+      ]
+    },
+    {
+      "title": "Container Disk I/O",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(container_fs_reads_bytes_total{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}[5m])",
+          "legendFormat": "{{name}} read"
+        },
+        {
+          "expr": "rate(container_fs_writes_bytes_total{name=~\".+\", name!~\"cadvisor|prometheus|grafana|otel_collector|loki|tempo|postgres_exporter|redis_exporter|elasticsearch_exporter\"}[5m])",
+          "legendFormat": "{{name}} write"
+        }
+      ]
+    },
+    {
+      "title": "Container CPU Usage (All Containers Table)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "CPU %" }, "properties": [{ "id": "unit", "value": "percentunit" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 0.8 }] } }, { "id": "custom.displayMode", "value": "color-background" }] },
+          { "matcher": { "id": "byName", "options": "Memory" }, "properties": [{ "id": "unit", "value": "bytes" }] },
+          { "matcher": { "id": "byName", "options": "Filesystem" }, "properties": [{ "id": "unit", "value": "bytes" }] }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "CPU %", "desc": true }]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "targets": [
+        {
+          "expr": "rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "format": "table",
+          "refId": "CPU %"
+        },
+        {
+          "expr": "container_memory_usage_bytes{name=~\".+\"}",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Memory"
+        },
+        {
+          "expr": "container_fs_usage_bytes{name=~\".+\"}",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "format": "table",
+          "refId": "Filesystem"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["infrastructure", "containers", "cadvisor"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Infrastructure - Container Resources",
+  "uid": "infrastructure-containers",
+  "version": 1
+}

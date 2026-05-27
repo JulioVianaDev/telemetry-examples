@@ -10,3 +10,29 @@ scrape_configs:
   - job_name: "backend-nestjs"
     static_configs:
       - targets: ["host.docker.internal:6666"]
+
+  # ─── Container metrics (cAdvisor) ───
+  - job_name: "cadvisor"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # ─── PostgreSQL metrics ───
+  - job_name: "postgres-exporter"
+    static_configs:
+      - targets: ["postgres_exporter:9187"]
+
+  # ─── Redis metrics ───
+  - job_name: "redis-exporter"
+    static_configs:
+      - targets: ["redis_exporter:9121"]
+
+  # ─── Elasticsearch metrics ───
+  - job_name: "elasticsearch-exporter"
+    static_configs:
+      - targets: ["elasticsearch_exporter:9114"]
+
+  # ─── RabbitMQ metrics (built-in Prometheus plugin) ───
+  - job_name: "rabbitmq"
+    static_configs:
+      - targets: ["rabbitmq_telemetry:15692"]

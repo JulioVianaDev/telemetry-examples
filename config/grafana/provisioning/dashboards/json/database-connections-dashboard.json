@@ -1,0 +1,762 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "PostgreSQL",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "PostgreSQL - Active Connections by State",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 30, "lineWidth": 2, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "pg_connections_count{database=\"backend\"}",
+          "legendFormat": "{{state}} ({{user}})"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Connections Waiting on Locks",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "pg_connections_waiting{database=\"backend\"}",
+          "legendFormat": "waiting ({{state}} - {{user}})"
+        },
+        {
+          "expr": "pg_connections_max_idle_seconds{database=\"backend\"}",
+          "legendFormat": "max idle secs ({{state}})"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Slow Queries (Top by Mean Time)",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "mean_time_seconds" }, "properties": [{ "id": "unit", "value": "s" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.1 }, { "color": "red", "value": 0.5 }] } }, { "id": "custom.displayMode", "value": "color-background" }] },
+          { "matcher": { "id": "byName", "options": "max_time_seconds" }, "properties": [{ "id": "unit", "value": "s" }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 2 }] } }, { "id": "custom.displayMode", "value": "color-background" }] },
+          { "matcher": { "id": "byName", "options": "total_time_seconds" }, "properties": [{ "id": "unit", "value": "s" }] }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "mean_time_seconds", "desc": true }]
+      },
+      "targets": [
+        {
+          "expr": "topk(20, pg_stat_statements_mean_time_seconds)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Lock Activity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2, "stacking": { "mode": "normal" } }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "pg_locks_count{database=\"backend\"}",
+          "legendFormat": "{{lock_mode}}"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Database Size",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 19 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 536870912 },
+              { "color": "red", "value": 1073741824 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "pg_database_size_size_bytes{database=\"backend\"}",
+          "legendFormat": "backend"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Max Connection Age (Idle)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 19 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 300 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "max(pg_connections_max_idle_seconds{database=\"backend\", state=\"idle\"})",
+          "legendFormat": "max idle"
+        }
+      ]
+    },
+    {
+      "title": "PostgreSQL - Slow Query Logs",
+      "type": "logs",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 27 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{job=\"backend-nestjs\"} |~ \"duration:\" |~ \"ms\"",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "title": "Elasticsearch",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Elasticsearch - Cluster Health",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "GREEN", "color": "green" }, "2": { "text": "YELLOW", "color": "yellow" }, "3": { "text": "RED", "color": "red" } } }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "elasticsearch_cluster_health_status{color=\"green\"} * 1 + elasticsearch_cluster_health_status{color=\"yellow\"} * 2 + elasticsearch_cluster_health_status{color=\"red\"} * 3",
+          "legendFormat": "cluster"
+        }
+      ]
+    },
+    {
+      "title": "Elasticsearch - Active Connections (HTTP)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 9, "x": 6, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "elasticsearch_transport_open_connections_number",
+          "legendFormat": "transport connections"
+        },
+        {
+          "expr": "elasticsearch_process_open_files_count",
+          "legendFormat": "open files"
+        }
+      ]
+    },
+    {
+      "title": "Elasticsearch - Indexing & Search Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 9, "x": 15, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(elasticsearch_indices_indexing_index_total[5m])",
+          "legendFormat": "index rate"
+        },
+        {
+          "expr": "rate(elasticsearch_indices_search_query_total[5m])",
+          "legendFormat": "search rate"
+        },
+        {
+          "expr": "rate(elasticsearch_indices_search_fetch_total[5m])",
+          "legendFormat": "fetch rate"
+        }
+      ]
+    },
+    {
+      "title": "Elasticsearch - Query Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(elasticsearch_indices_search_query_time_seconds_total[5m]) / rate(elasticsearch_indices_search_query_total[5m])",
+          "legendFormat": "avg query latency"
+        },
+        {
+          "expr": "rate(elasticsearch_indices_search_fetch_time_seconds_total[5m]) / rate(elasticsearch_indices_search_fetch_total[5m])",
+          "legendFormat": "avg fetch latency"
+        },
+        {
+          "expr": "rate(elasticsearch_indices_indexing_index_time_seconds_total[5m]) / rate(elasticsearch_indices_indexing_index_total[5m])",
+          "legendFormat": "avg index latency"
+        }
+      ]
+    },
+    {
+      "title": "Elasticsearch - JVM Heap & GC",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "elasticsearch_jvm_memory_used_bytes",
+          "legendFormat": "heap used ({{area}})"
+        },
+        {
+          "expr": "elasticsearch_jvm_memory_max_bytes",
+          "legendFormat": "heap max ({{area}})"
+        }
+      ]
+    },
+    {
+      "title": "Redis",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "Redis - Connected Clients",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "connected clients"
+        },
+        {
+          "expr": "redis_blocked_clients",
+          "legendFormat": "blocked clients"
+        },
+        {
+          "expr": "redis_tracking_clients",
+          "legendFormat": "tracking clients"
+        }
+      ]
+    },
+    {
+      "title": "Redis - WebSocket Connections (via Redis IO Adapter)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 53 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 25, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "websocket_connections",
+          "legendFormat": "active ws connections ({{namespace}})"
+        },
+        {
+          "expr": "rate(websocket_connections_total[5m])",
+          "legendFormat": "new connections/s"
+        },
+        {
+          "expr": "rate(websocket_disconnects_total[5m])",
+          "legendFormat": "disconnections/s ({{reason}})"
+        },
+        {
+          "expr": "websocket_rooms",
+          "legendFormat": "rooms ({{namespace}})"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "redis_memory_used_bytes",
+          "legendFormat": "used memory"
+        },
+        {
+          "expr": "redis_memory_max_bytes",
+          "legendFormat": "max memory"
+        },
+        {
+          "expr": "redis_memory_used_rss_bytes",
+          "legendFormat": "RSS memory"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Command Rate & Slow Log",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 61 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_commands_processed_total[5m])",
+          "legendFormat": "commands/s"
+        },
+        {
+          "expr": "redis_slowlog_length",
+          "legendFormat": "slow log entries"
+        },
+        {
+          "expr": "rate(redis_keyspace_hits_total[5m])",
+          "legendFormat": "keyspace hits/s"
+        },
+        {
+          "expr": "rate(redis_keyspace_misses_total[5m])",
+          "legendFormat": "keyspace misses/s"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Hit Rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 69 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "green", "value": 0.9 }
+            ]
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total)",
+          "legendFormat": "hit rate"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Connected Pub/Sub Channels",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 69 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "redis_pubsub_channels",
+          "legendFormat": "pubsub channels"
+        },
+        {
+          "expr": "redis_pubsub_patterns",
+          "legendFormat": "pubsub patterns"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Keys by DB",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 73 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {}
+      },
+      "targets": [
+        {
+          "expr": "redis_db_keys",
+          "legendFormat": "db{{db}}"
+        }
+      ]
+    },
+    {
+      "title": "Redis - Slow Log Last Entry (microseconds)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 69 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "\u00b5s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red", "value": 100000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "redis_slowlog_last_id",
+          "legendFormat": "slow log last ID"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 77 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "title": "RabbitMQ - Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 78 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rabbitmq_connections",
+          "legendFormat": "total connections"
+        },
+        {
+          "expr": "rabbitmq_channels",
+          "legendFormat": "channels"
+        },
+        {
+          "expr": "rabbitmq_consumers",
+          "legendFormat": "consumers"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ - Queue Messages",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 78 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rabbitmq_queue_messages",
+          "legendFormat": "{{queue}} - total"
+        },
+        {
+          "expr": "rabbitmq_queue_messages_ready",
+          "legendFormat": "{{queue}} - ready"
+        },
+        {
+          "expr": "rabbitmq_queue_messages_unacked",
+          "legendFormat": "{{queue}} - unacked"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ - Message Rates",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 86 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(rabbitmq_queue_messages_published_total[5m])",
+          "legendFormat": "{{queue}} published/s"
+        },
+        {
+          "expr": "rate(rabbitmq_queue_messages_delivered_total[5m])",
+          "legendFormat": "{{queue}} delivered/s"
+        },
+        {
+          "expr": "rate(rabbitmq_queue_messages_acked_total[5m])",
+          "legendFormat": "{{queue}} acked/s"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ - Queue Memory & Consumers",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 86 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rabbitmq_queue_messages_bytes",
+          "legendFormat": "{{queue}} message bytes"
+        },
+        {
+          "expr": "rabbitmq_process_resident_memory_bytes",
+          "legendFormat": "RabbitMQ RSS"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ - Erlang Process & FD Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 94 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rabbitmq_process_open_fds",
+          "legendFormat": "open file descriptors"
+        },
+        {
+          "expr": "rabbitmq_process_max_fds",
+          "legendFormat": "max file descriptors"
+        },
+        {
+          "expr": "rabbitmq_erlang_processes_used",
+          "legendFormat": "erlang processes used"
+        }
+      ]
+    },
+    {
+      "title": "RabbitMQ - Connection Churn",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 94 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(rabbitmq_connections_opened_total[5m])",
+          "legendFormat": "connections opened/s"
+        },
+        {
+          "expr": "rate(rabbitmq_connections_closed_total[5m])",
+          "legendFormat": "connections closed/s"
+        },
+        {
+          "expr": "rate(rabbitmq_channels_opened_total[5m])",
+          "legendFormat": "channels opened/s"
+        },
+        {
+          "expr": "rate(rabbitmq_channels_closed_total[5m])",
+          "legendFormat": "channels closed/s"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["database", "connections", "postgresql", "redis", "elasticsearch", "rabbitmq", "websocket"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30m", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Database & Provider Connections",
+  "uid": "database-connections",
+  "version": 1
+}
