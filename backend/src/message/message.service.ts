@@ -8,6 +8,11 @@ import { UpdateMessageDto } from './update-message.dto';
 import { QueryMessageDto } from './query-message.dto';
 import { RabbitmqService } from '../rabbitmq/rabbitmq.service';
 import { ConsoleService } from './console.service';
+import { RedisCacheService } from '../redis/redis-cache.service';
+import { ElasticsearchLogService } from '../elasticsearch/elasticsearch-log.service';
+
+const CACHE_PREFIX = 'messages';
+const CACHE_TTL = 60; // 1 minute
 
 @Injectable()
 export class MessageService {
@@ -16,6 +21,8 @@ export class MessageService {
     private readonly messageRepo: Repository<Message>,
     private readonly rabbitmqService: RabbitmqService,
     private readonly consoleService: ConsoleService,
+    private readonly redisCacheService: RedisCacheService,
+    private readonly esLogService: ElasticsearchLogService,
   ) {}
 
   async create(dto: CreateMessageDto): Promise<Message> {
@@ -55,6 +62,17 @@ export class MessageService {
             headers,
           );
 
+          // Invalidate list cache and log event
+          await this.redisCacheService.deleteByPrefix(`${CACHE_PREFIX}:list:`);
+          this.esLogService.log({
+            action: 'created',
+            entityId: saved.id,
+            entityType: 'message',
+            message: `message created`,
+            tenantId: saved.tenantId,
+            metadata: { content: saved.content },
+          });
+
           return saved;
         } catch (err) {
           span.recordException(err as Error);
@@ -72,6 +90,19 @@ export class MessageService {
     const tracer = trace.getTracer('message-service');
     return await tracer.startActiveSpan('findAll messages', async (span) => {
       try {
+        // Build a cache key from query params
+        const cacheKey = `${CACHE_PREFIX}:list:${JSON.stringify(query)}`;
+        span.setAttribute('cache.key', cacheKey);
+
+        const cached = await this.redisCacheService.getData<{ data: Message[]; count: number }>(cacheKey);
+        if (cached) {
+          span.setAttribute('cache.hit', true);
+          span.setAttribute('result.count', cached.count);
+          span.setAttribute('result.returned', cached.data.length);
+          return cached;
+        }
+        span.setAttribute('cache.hit', false);
+
         const where: Record<string, unknown> = {};
         if (query.tenantId) {
           where.tenantId = query.tenantId;
@@ -101,6 +132,14 @@ export class MessageService {
 
         span.setAttribute('result.count', count);
         span.setAttribute('result.returned', data.length);
+
+        // Cache the result
+        await this.redisCacheService.saveData({
+          key: cacheKey,
+          data: { data, count },
+          time: CACHE_TTL,
+        });
+
         return { data, count };
       } catch (err) {
         span.recordException(err as Error);
@@ -116,6 +155,19 @@ export class MessageService {
     return await tracer.startActiveSpan('findOne message', async (span) => {
       try {
         span.setAttribute('message.id', id);
+        const cacheKey = `${CACHE_PREFIX}:one:${id}`;
+        span.setAttribute('cache.key', cacheKey);
+
+        const cached = await this.redisCacheService.getData<Message>(cacheKey);
+        if (cached) {
+          span.setAttribute('cache.hit', true);
+          span.setAttribute('message.found', true);
+          span.setAttribute('message.status', cached.status);
+          span.setAttribute('tenant.id', cached.tenantId);
+          return cached;
+        }
+        span.setAttribute('cache.hit', false);
+
         const message = await this.messageRepo.findOneBy({ id });
         if (!message) {
           span.setAttribute('message.found', false);
@@ -124,6 +176,13 @@ export class MessageService {
         span.setAttribute('message.found', true);
         span.setAttribute('message.status', message.status);
         span.setAttribute('tenant.id', message.tenantId);
+
+        await this.redisCacheService.saveData({
+          key: cacheKey,
+          data: message,
+          time: CACHE_TTL,
+        });
+
         return message;
       } catch (err) {
         span.recordException(err as Error);
@@ -183,6 +242,20 @@ export class MessageService {
             },
             headers,
           );
+
+          // Invalidate caches and log event
+          await Promise.all([
+            this.redisCacheService.deleteData(`${CACHE_PREFIX}:one:${saved.id}`),
+            this.redisCacheService.deleteByPrefix(`${CACHE_PREFIX}:list:`),
+          ]);
+          this.esLogService.log({
+            action: 'updated',
+            entityId: saved.id,
+            entityType: 'message',
+            message: `message updated`,
+            tenantId: saved.tenantId,
+            metadata: { content: saved.content },
+          });
 
           return saved;
         } catch (err) {
@@ -259,6 +332,20 @@ export class MessageService {
         span.setAttribute('message.found', true);
         span.setAttribute('tenant.id', message.tenantId);
         await this.messageRepo.delete(id);
+
+        // Invalidate caches and log event
+        await Promise.all([
+          this.redisCacheService.deleteData(`${CACHE_PREFIX}:one:${id}`),
+          this.redisCacheService.deleteByPrefix(`${CACHE_PREFIX}:list:`),
+        ]);
+        this.esLogService.log({
+          action: 'deleted',
+          entityId: id,
+          entityType: 'message',
+          message: `message deleted`,
+          tenantId: message.tenantId,
+        });
+
         return { deleted: true, id };
       } catch (err) {
         span.recordException(err as Error);

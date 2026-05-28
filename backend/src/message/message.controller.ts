@@ -13,10 +13,14 @@ import { MessageService } from './message.service';
 import { CreateMessageDto } from './create-message.dto';
 import { UpdateMessageDto } from './update-message.dto';
 import { QueryMessageDto } from './query-message.dto';
+import { ElasticsearchLogService } from '../elasticsearch/elasticsearch-log.service';
 
 @Controller('messages')
 export class MessageController {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly esLogService: ElasticsearchLogService,
+  ) {}
 
   @Post()
   create(@Body() dto: CreateMessageDto) {
@@ -26,6 +30,18 @@ export class MessageController {
   @Get()
   findAll(@Query() query: QueryMessageDto) {
     return this.messageService.findAll(query);
+  }
+
+  @Get('logs')
+  searchLogs(
+    @Query('term') term: string,
+    @Query('from') from?: string,
+    @Query('size') size?: string,
+  ) {
+    return this.esLogService.search(term || '*', {
+      from: from ? parseInt(from, 10) : 0,
+      size: size ? parseInt(size, 10) : 20,
+    });
   }
 
   @Get('test/error')

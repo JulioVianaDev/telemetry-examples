@@ -11,6 +11,7 @@ import {
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
+import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
 import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { PeriodicExportingMetricReader, MeterProvider } from '@opentelemetry/sdk-metrics';
 import { PrometheusExporter } from '@opentelemetry/exporter-prometheus';
@@ -66,6 +67,8 @@ const sdk = new NodeSDK({
   instrumentations: [
     getNodeAutoInstrumentations({
       '@opentelemetry/instrumentation-pg': { enabled: false },
+      // Disable bundled ioredis — we register a separate provider below
+      '@opentelemetry/instrumentation-ioredis': { enabled: false },
       '@opentelemetry/instrumentation-http': {
         ignoreIncomingRequestHook: (request) => {
           // Ignore Prometheus scrape requests — they pollute span metrics
@@ -110,11 +113,40 @@ registerInstrumentations({
   tracerProvider: pgProvider,
 });
 
+// ─── Separate IORedis instrumentation with its own provider ───
+const redisProvider = new BasicTracerProvider({
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: 'redis-query',
+  }),
+  spanProcessors: [
+    new SimpleSpanProcessor(new OTLPTraceExporter({ url: exporterUrl })),
+  ],
+});
+
+registerInstrumentations({
+  instrumentations: [
+    new IORedisInstrumentation({
+      dbStatementSerializer: (cmdName, cmdArgs) => {
+        const args = cmdArgs
+          .map((a) =>
+            typeof a === 'string' && a.length > 100
+              ? a.substring(0, 100) + '...'
+              : a,
+          )
+          .join(' ');
+        return `${cmdName} ${args}`.trim();
+      },
+    }),
+  ],
+  tracerProvider: redisProvider,
+});
+
 console.log(`[Telemetry] initialized for service "${serviceName}"`);
 console.log(`[Telemetry] traces  -> ${exporterUrl} -> Tempo`);
 console.log(`[Telemetry] metrics -> ${exporterUrl} -> Prometheus`);
 console.log(`[Telemetry] logs    -> ${exporterUrl} -> Loki`);
 console.log(`[Telemetry] pg queries will appear as "pg-query"`);
+console.log(`[Telemetry] redis commands will appear as "redis-query"`);
 
 process.on('SIGTERM', () => {
   Promise.all([sdk.shutdown(), loggerProvider.shutdown(), meterProvider.shutdown()])

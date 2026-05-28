@@ -4,37 +4,18 @@ import {
   elasticsearchRepositoryProviders,
 } from './elasticsearch.providers';
 import { ELASTICSEARCH_TOKEN } from './tokens/elasticsearch-token';
-import { ELASTICSEARCH_REPOSITORY_TOKENS } from './tokens/repository-tokens';
+import { ElasticsearchLogService } from './elasticsearch-log.service';
 
-/**
- * Global ElasticSearch Module
- * 
- * Provides ElasticSearch-based repositories for the entire application.
- * 
- * Usage in services:
- * @example
- * ```typescript
- * import { ELASTICSEARCH_REPOSITORY_TOKENS } from '@infra/elasticsearch';
- * 
- * @Injectable()
- * export class ProductService {
- *   constructor(
- *     @Inject(ELASTICSEARCH_REPOSITORY_TOKENS.PRODUCT_REPOSITORY)
- *     private readonly productRepository: IProductContractRepository,
- *   ) {}
- * }
- * ```
- */
 @Global()
 @Module({
   providers: [
     elasticsearchProvider,
     ...elasticsearchRepositoryProviders,
+    ElasticsearchLogService,
   ],
   exports: [
     ELASTICSEARCH_TOKEN,
-    // Only export tokens that have corresponding providers registered
-    ELASTICSEARCH_REPOSITORY_TOKENS.LOG_REPOSITORY,
+    ElasticsearchLogService,
     // Uncomment when repositories are registered:
     // ELASTICSEARCH_REPOSITORY_TOKENS.FILE_REPOSITORY,
     // ELASTICSEARCH_REPOSITORY_TOKENS.PRODUCT_REPOSITORY,

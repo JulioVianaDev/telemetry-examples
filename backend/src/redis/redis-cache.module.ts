@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { redisProviders } from './redis.providers';
+import { RedisCacheService } from './redis-cache.service';
 import { REDIS_TOKENS } from './tokens/redis-tokens';
 
 /**
@@ -47,6 +48,7 @@ import { REDIS_TOKENS } from './tokens/redis-tokens';
   exports: [
     REDIS_TOKENS.REDIS_CLIENT,
     REDIS_TOKENS.REDIS_CACHE_SERVICE,
+    RedisCacheService,
     ...Object.values(REDIS_TOKENS),
   ],
 })
