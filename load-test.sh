@@ -104,96 +104,6 @@ for i in $(seq 0 $((HALF - 1))); do
   fi
 done
 
-# --- Telemetry: Ingest Events ---
-echo ""
-echo "[6/12] Ingesting telemetry events into Elasticsearch..."
-
-TELEM_TYPES=("redis_operation" "elasticsearch_operation" "websocket_event" "cache_hit" "cache_miss")
-TELEM_OPS=("GET" "SET" "DELETE" "search" "index" "connect" "broadcast" "aggregate")
-TELEM_SERVICES=("telemetry-service" "message-service" "redis-cache" "es-repository")
-
-for i in $(seq 1 15); do
-  IDX=$(( (i - 1) % ${#USER_IDS[@]} ))
-  CUR_USER="${USER_IDS[$IDX]}"
-  CUR_TENANT="${TENANT_IDS[$IDX]}"
-  T_TYPE="${TELEM_TYPES[$(( (i - 1) % ${#TELEM_TYPES[@]} ))]}"
-  T_OP="${TELEM_OPS[$(( (i - 1) % ${#TELEM_OPS[@]} ))]}"
-  T_SVC="${TELEM_SERVICES[$(( (i - 1) % ${#TELEM_SERVICES[@]} ))]}"
-  T_DUR=$(( RANDOM % 500 + 1 ))
-  T_STATUS="success"
-  # Make every 5th event an error
-  if [ $((i % 5)) -eq 0 ]; then T_STATUS="error"; fi
-
-  RESPONSE=$(curl -s -X POST "$BASE_URL/telemetry/events" \
-    -H "Content-Type: application/json" \
-    -H "X-User-Id: $CUR_USER" \
-    -d "{\"type\": \"$T_TYPE\", \"operation\": \"$T_OP\", \"service\": \"$T_SVC\", \"duration_ms\": $T_DUR, \"status\": \"$T_STATUS\", \"tenant_id\": \"$CUR_TENANT\", \"user_id\": \"$CUR_USER\", \"metadata\": {\"test_index\": $i}}")
-  T_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-  echo "  Ingested: type=$T_TYPE op=$T_OP svc=$T_SVC status=$T_STATUS tenant=$CUR_TENANT id=$T_ID"
-done
-
-# --- Telemetry: Search & Stats (exercises Redis cache + ES) ---
-echo ""
-echo "[7/12] Querying telemetry events (Redis cache + Elasticsearch)..."
-
-echo "  GET /telemetry/events (all)"
-curl -s "$BASE_URL/telemetry/events" -H "X-User-Id: user-1" | head -c 300
-echo ""
-
-echo "  GET /telemetry/events?type=redis_operation"
-curl -s "$BASE_URL/telemetry/events?type=redis_operation" -H "X-User-Id: user-2" | head -c 300
-echo ""
-
-echo "  GET /telemetry/events?type=cache_hit&size=5"
-curl -s "$BASE_URL/telemetry/events?type=cache_hit&size=5" -H "X-User-Id: user-3" | head -c 300
-echo ""
-
-echo "  GET /telemetry/events?service=telemetry-service&tenant_id=tenant-acme"
-curl -s "$BASE_URL/telemetry/events?service=telemetry-service&tenant_id=tenant-acme" -H "X-User-Id: user-1" | head -c 300
-echo ""
-
-echo "  GET /telemetry/events?status=error"
-curl -s "$BASE_URL/telemetry/events?status=error" -H "X-User-Id: user-4" | head -c 300
-echo ""
-
-# Second call to same query = should hit Redis cache
-echo "  GET /telemetry/events (cache hit expected)"
-curl -s "$BASE_URL/telemetry/events" -H "X-User-Id: user-1" | head -c 300
-echo ""
-
-echo "  GET /telemetry/events?type=redis_operation (cache hit expected)"
-curl -s "$BASE_URL/telemetry/events?type=redis_operation" -H "X-User-Id: user-2" | head -c 300
-echo ""
-
-echo ""
-echo "  GET /telemetry/stats (all tenants)"
-curl -s "$BASE_URL/telemetry/stats" -H "X-User-Id: user-1" | head -c 400
-echo ""
-
-echo "  GET /telemetry/stats?tenant_id=tenant-acme"
-curl -s "$BASE_URL/telemetry/stats?tenant_id=tenant-acme" -H "X-User-Id: user-1" | head -c 400
-echo ""
-
-echo "  GET /telemetry/stats?tenant_id=tenant-globex"
-curl -s "$BASE_URL/telemetry/stats?tenant_id=tenant-globex" -H "X-User-Id: user-3" | head -c 400
-echo ""
-
-# Second call = cache hit, also broadcasts stats via WebSocket
-echo "  GET /telemetry/stats (cache hit expected)"
-curl -s "$BASE_URL/telemetry/stats" -H "X-User-Id: user-1" | head -c 400
-echo ""
-
-# --- Telemetry: Database health endpoints ---
-echo ""
-echo "[8/12] Checking database health (traced spans for Redis & Elasticsearch)..."
-
-echo "  GET /telemetry/redis/info"
-curl -s "$BASE_URL/telemetry/redis/info" -H "X-User-Id: user-1"
-echo ""
-
-echo "  GET /telemetry/elasticsearch/health"
-curl -s "$BASE_URL/telemetry/elasticsearch/health" -H "X-User-Id: user-1"
-echo ""
 
 # --- Trigger 500 Internal Server Errors ---
 echo ""
@@ -290,14 +200,6 @@ for i in $(seq $START $((${#IDS[@]} - 1))); do
   echo ""
 done
 
-# --- Telemetry Final Stats ---
-echo ""
-echo "[12/12] Telemetry final stats (broadcasts via WebSocket to all connected sockets)..."
-curl -s "$BASE_URL/telemetry/stats" -H "X-User-Id: user-1"
-echo ""
-echo ""
-curl -s "$BASE_URL/telemetry/redis/info" -H "X-User-Id: user-1"
-echo ""
 
 # --- Final listing ---
 echo ""

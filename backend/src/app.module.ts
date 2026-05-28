@@ -10,7 +10,6 @@ import { MessageStats } from './message/message-stats.entity';
 import { UsersController } from './users.controller';
 import { RedisCacheModule } from './redis/redis-cache.module';
 import { ElasticSearchModule } from './elasticsearch/elasticsearch.module';
-import { TelemetryModule } from './telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -46,9 +45,8 @@ import { TelemetryModule } from './telemetry/telemetry.module';
     RedisCacheModule,
     ElasticSearchModule,
     MessageModule,
-    TelemetryModule,
   ],
   controllers: [AppController, UsersController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

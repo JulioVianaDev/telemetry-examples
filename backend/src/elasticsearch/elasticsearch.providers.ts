@@ -3,8 +3,6 @@ import { Client as ElasticSearchClient } from '@elastic/elasticsearch';
 import { ELASTICSEARCH_TOKEN } from './tokens/elasticsearch-token';
 import { ELASTICSEARCH_REPOSITORY_TOKENS } from './tokens/repository-tokens';
 
-import { TelemetryElasticSearchRepository } from '../telemetry/telemetry.elasticsearch.repository';
-
 // Repository imports (uncomment when ready)
 // import { FileElasticSearchRepository } from '../../modules/file/repositories/file.elasticsearch.repository';
 // import { ProductElasticSearchRepository } from '../../products/repositories/product.elastic-search.repository';
@@ -28,13 +26,6 @@ export const elasticsearchProvider: Provider = {
  * All ElasticSearch repository providers
  */
 export const elasticsearchRepositoryProviders: Provider[] = [
-  // Telemetry / Logs
-  TelemetryElasticSearchRepository,
-  {
-    provide: ELASTICSEARCH_REPOSITORY_TOKENS.LOG_REPOSITORY,
-    useExisting: TelemetryElasticSearchRepository,
-  },
-
   // Files (uncomment when ready)
   // FileElasticSearchRepository,
   // {
